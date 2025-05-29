@@ -65,7 +65,7 @@ router.post('/select-school', (req, res) => {
       VALUES (?, ?)
     `).run(req.session.user.id, schoolId);
 
-    res.redirect('/courses');
+    res.redirect('/');
   } catch (err) {
     console.error('Σφάλμα εισαγωγής σχολής για χρήστη:', err);
     res.status(500).send('Σφάλμα αποθήκευσης');
