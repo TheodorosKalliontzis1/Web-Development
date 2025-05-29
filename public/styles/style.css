@@ -1,0 +1,330 @@
+*{
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+}
+
+.header{
+    min-height: 100vh;
+    width: 100%;
+    background-image: linear-gradient(rgba(4, 9, 30, 0.7), rgba(4, 9, 30, 0.7)),url(/smartclass_img/elitis.jpg);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+nav{
+    display: flex;
+    padding: 2% 5%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav img{
+    width: 150px;
+    height:auto;
+}
+
+.nav-links{
+    flex: 1;
+    text-align: right ;
+}
+
+.nav-links ul li{
+    list-style: none;
+    display: inline-block; 
+    padding: 8px 12px;
+    position: relative;
+}
+
+.nav-links ul li a  {
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.nav-links ul li::after{
+    content: '';
+    width : 0%;
+    height: 2px;
+    background: #f44336;
+    display:block;
+    margin:auto;
+    transition: 0.5s;
+}
+
+.nav-links ul li:hover::after{
+    width: 100%;
+}
+
+.text-box{
+    width: 90%;
+    color: #fff;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.text-box h1{
+    font-size: 62px;
+}
+
+.text-box p{
+    margin: 10px 0 40px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.hero-btn{
+    display: inline-block;
+    text-decoration: none;
+    color: #fff;
+    border: 1px solid #fff;
+    background: transparent;
+    padding: 12px 34px;
+    font-size: 13px;
+    position: relative;
+    cursor: pointer; 
+}
+
+.hero-btn:hover{
+    border: 1px solid #f44336;
+    background: #f44336;
+    transition: 1s;
+}
+
+nav .fa{
+    display: none;
+}
+
+@media(max-width: 700px){
+    .text-box h1{
+        font-size: 20px;
+    }
+
+    .nav-links ul li{
+        display: block;
+    }
+
+    .nav-links{
+        position: absolute;
+        background: #f44336;
+        height: 100vh;
+        width: 200px;
+        top:0;
+        right: -200px;
+        text-align: left;
+        z-index: 2; 
+        transition: 1s;
+    }
+
+    nav .fa{
+        display: block;
+        color: #fff;
+        margin: 10px;
+        font-size: 22px;
+        cursor: pointer;
+    }
+
+    .nav-links ul{
+        padding: 30px;
+    }
+}
+
+/* ----- Courses ----- */
+.course {
+    background: linear-gradient(to bottom, rgba(4, 9, 30, 0.95), rgba(4, 9, 30, 0.85));
+    color: #fff;
+    padding: 60px 0;
+    width: 100%;
+    text-align: center;
+}
+
+.course h1 {
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 30px;
+    text-align: center;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.course-col h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 10px 0;
+    text-align: left;
+    color: #f1f1f1;
+}
+
+.row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 5%;
+}
+
+h3 {
+    text-align: left;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+.course-col {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.course-col:hover {
+    box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.2);
+    transition: 0.5s;
+}
+
+/* ----- Department Blocks (a blocks) ----- */
+/* ----- Feature Box Layout ----- */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    width: 90%;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+/* ----- Κουτιά σχολών ----- */
+.feature-box {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    backdrop-filter: blur(4px);
+    color: white;
+
+}
+
+.schools-wrapper {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.6s ease, opacity 0.6s ease;
+  }
+  
+  .schools-wrapper.open {
+    max-height: 2000px; /* αρκετά μεγάλο για να χωρέσει τα κουτιά */
+    opacity: 1;
+  }
+  
+
+.feature-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ----- Τίτλος και Link ----- */
+.feature-title a.ablock {
+    display: inline-block;
+    font-size: 16px;
+    font-weight: 700;
+    color: #f44336;
+    text-decoration: none;
+    border-left: 5px solid #f44336;
+    padding-left: 10px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.feature-title a.ablock::after {
+    content: '→';
+    position: absolute;
+    right: -20px;
+    opacity: 0;
+    transition: right 0.3s ease, opacity 0.3s ease;
+}
+
+.feature-title a.ablock:hover {
+    color: #ffffff;
+    background-color: #f44336;
+    padding-left: 15px;
+    border-left-color: #ffffff;
+}
+
+.feature-title a.ablock:hover::after {
+    right: 0;
+    opacity: 1;
+}
+
+/* ----- Υπότιτλος κάτω από το a block ----- */
+.feature-box .feature-text {
+    font-size: 16px; /* Ρύθμισε το μέγεθος της γραμματοσειράς */
+    color: lightslategrey;  /* Ανοιχτό γκρι για να ταιριάζει με την αισθητική */
+    font-weight: 600; /* Ρύθμισε το βάρος της γραμματοσειράς */
+    text-align: right;
+    letter-spacing: 1px; /* Ρύθμισε την απόσταση μεταξύ των γραμμάτων */
+    margin-left: 20px; /* Ευθυγράμμιση με το a στοιχείο */
+}
+
+
+/* Responsive */
+@media(max-width: 768px) {
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/*----- Campus -----*/
+.campus {
+    background: linear-gradient(to bottom, rgba(4, 9, 30, 0.95), rgba(4, 9, 30, 0.85));
+    color: #fff;
+    padding: 60px 0;
+    width: 100%;
+    text-align: center;
+}
+
+.campus h1 {
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 30px;
+    text-align: center;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.campus-col {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.campus-col img{
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+.layer {
+    background: transparent;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: 0.5s;
+}
+
+.layer:hover {
+    background: rgba(226, 0, 0, 0.5);
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <title>Επιλογή Μαθημάτων</title>
+  <link rel="stylesheet" href="../styles/select-schools.css" />
+  <link rel="stylesheet" href="../styles/myCourses.css" />
+</head>
+<body>
+  <section class="container">
+    <nav class="breadcrumb" aria-label="breadcrumb">
+      <a href="/">Αρχική</a>
+      <span class="separator">»</span>
+    </nav>
+
+    <h1>Τα μαθήματά μου</h1>
+
+    {{!-- Φοιτητής --}}
+    {{#if isStudent}}
+      {{#if hasSelectedCourses}}
+        {{#if isEditing}}
+          <form method="POST" action="/myCourses" class="form-container">
+            {{#each courses}}
+              <div class="course-option">
+                <label>
+                  <input type="checkbox" name="courses" value="{{this.id}}"
+                    {{#if (includes ../selectedCourses this.id)}}checked{{/if}}>
+                  {{this.name}} ({{this.semester_id}}ο εξάμηνο)
+                </label>
+              </div>
+            {{/each}}
+            <button type="submit" class="btn">Αποθήκευση Επιλογών</button>
+          </form>
+        {{else}}
+          <ul class="course-list">
+            {{#each courses}}
+              {{#if (includes ../selectedCourses this.id)}}
+                <li class="course-item">
+                  <a href="/myCourses/{{this.id}}" class="course-link">{{this.name}}</a>
+                </li>
+              {{/if}}
+            {{/each}}
+          </ul>
+          <a href="/myCourses?edit=true" class="btn">Επέλεξε νέα μαθήματα</a>
+        {{/if}}
+      {{else}}
+        <form method="POST" action="/myCourses" class="form-container">
+          {{#if courses.length}}
+            {{#each courses}}
+              <div class="course-option">
+                <label>
+                  <input type="checkbox" name="courses" value="{{this.id}}">
+                  {{this.name}} ({{this.semester_id}}ο εξάμηνο)
+                </label>
+              </div>
+            {{/each}}
+          {{else}}
+            <p>Δεν υπάρχουν μαθήματα για τη σχολή σας.</p>
+          {{/if}}
+          <button type="submit" class="btn">Αποθήκευση Επιλογών</button>
+        </form>
+      {{/if}}
+    {{/if}}
+
+    {{!-- Καθηγητής --}}
+    {{#if isProfessor}}
+      <hr>
+      <h2>Μαθήματα που διδάσκετε</h2>
+
+      {{#if hasSelectedCourses}}
+        {{#unless isEditing}}
+          <ul class="course-list">
+            {{#each courses}}
+              {{#if (includes ../teachingCourses this.id)}}
+                <li class="course-item">
+                  <a href="/myCourses/{{this.id}}" class="course-link">{{this.name}}</a>
+                </li>
+              {{/if}}
+            {{/each}}
+          </ul>
+          <a href="/myCourses?edit=true" class="btn">Επιλογή/Αλλαγή Μαθημάτων</a>
+        {{else}}
+          <form method="POST" action="/myCourses" class="form-container">
+            {{#each courses}}
+              <div class="course-option">
+                <label>
+                  <input type="checkbox" name="teachingCourses" value="{{this.id}}"
+                    {{#if (includes ../teachingCourses this.id)}}checked{{/if}}>
+                  {{this.name}} ({{this.semester_id}}ο εξάμηνο)
+                </label>
+              </div>
+            {{/each}}
+            <button type="submit" class="btn">Αποθήκευση Διδασκαλίας</button>
+          </form>
+        {{/unless}}
+      {{else}}
+        <p>Δεν έχετε επιλέξει ακόμα μαθήματα που διδάσκετε.</p>
+        <form method="POST" action="/myCourses" class="form-container">
+          {{#each courses}}
+            <div class="course-option">
+              <label>
+                <input type="checkbox" name="teachingCourses" value="{{this.id}}">
+                {{this.name}} ({{this.semester_id}}ο εξάμηνο)
+              </label>
+            </div>
+          {{/each}}
+          <button type="submit" class="btn">Αποθήκευση Διδασκαλίας</button>
+        </form>
+      {{/if}}
+    {{/if}}
+
+  </section>
+</body>
+</html>

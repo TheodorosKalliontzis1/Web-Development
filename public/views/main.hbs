@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartClass</title>
+
+    <!-- Σωστό path για CSS -->
+    <link rel="stylesheet" href="/styles/style.css">
+
+    <!-- Google Fonts και Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+
+    <section class="header">
+        <nav>
+            <a href="index.html"><img src="/smartclass_img/logo.png" alt="Logo"></a>
+            <div class="nav-links" id="navLinks">
+                <i class="fa fa-times" onclick="hideMenu()"></i>
+                <ul>
+                    <li><a href="/">Αρχική</a></li>
+                    <li><a href="/about_us">About us</a></li>
+                    <li><a href ="courses"> Μαθήματα</a></li>
+                    
+                    {{#if user}} 
+                    <li><a href="/myCourses">Τα Μαθήματά μου</a></li>
+                    <li><a href="/logout">Αποσύνδεση</a></li>
+                    {{else}} 
+                    <li><a href="/register">Εγγραφή</a></li>
+                    <li><a href="/login">Σύνδεση</a></li>
+                    {{/if}}
+                </ul>
+                </div>
+                <i class="fa fa-bars" onclick="showMenu()"></i>
+            </nav>
+
+        <div class="text-box">
+            <h1>Καλωσήρθατε στο SmartClass</h1>
+            <p>Μια Εφαρμογή από Φοιτητές για Φοιτητές</p>
+            {{#if user}}
+                <p><strong>{{users.username}}</strong>, είσαι συνδεδεμένος ως {{users.role}}!</p>
+                <a href = "/select-school" class="hero-btn">Διάλεξε τη Σχολή σου</a>
+            {{else}}
+                <p>Καλωσήρθες! Παρακαλώ συνδέσου ή εγγράψου για να συνεχίσεις.</p>
+                <a href="/register" class="hero-btn">Κάνε τώρα την Εγγραφή σου!</a>
+            {{/if}}
+            {{#if isAdmin}}
+                <p>Όνομα χρήστη: {{user.name}}</p>
+                <p>Καλωσόρισες, είσαι συνδεδεμένος ως <strong>admin</strong>.</p>
+            {{/if}}
+            <a href="#" class="hero-btn">FAQs</a>
+        </div>
+    </section>
+
+    <!-- COURSES -->
+    <section class="course">
+        <h1>Μαθήματα του Πανεπιστημίου Πατρών</h1>
+        <div class="row">
+            <div class="course-col">
+                <h3 class="feature-title">Σχολές και Τμήματα</h3>
+                <div class="feature-text">
+                    7 Σχολές &#8211; 31 τμήματα με πολύπλευρη και καινοτόμο δράση τόσο στις θετικές επιστήμες και τις επιστήμες υγείας όσο και στις ανθρωπιστικές και οικονομικές επιστήμες.
+                </div>
+            </div>
+
+            <div class="flexo2">
+                <div class="feature-box">
+                    <div class="feature-content">
+                        <h3 class="feature-title">
+                            <a class="ablock" href="?page_id=13403&amp;page_id=13427" target="_self" rel="noopener noreferrer">Σχολή Θετικών Επιστημών</a>
+                        </h3>
+                        <div class="feature-text">6 τμήματα</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13432" target="_self" rel="noopener noreferrer">Πολυτεχνική Σχολή</a>
+                    </h3>
+                    <div class="feature-text">6 τμήματα</div>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13426">Σχολή Επιστημών Υγείας</a>
+                    </h3>
+                    <div class="feature-text">2 τμήματα</div>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13368">Σχολή Ανθρωπιστικών και Κοινωνικών Επιστημών</a>
+                    </h3>
+                    <div class="feature-text">6 τμήματα</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flexo3">
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13428">Σχολή Οικονομικών Επιστημών και Διοίκησης Επιχειρήσεων</a>
+                    </h3>
+                    <div class="feature-text">4 τμήματα</div>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13424" target="_self" rel="noopener noreferrer">Σχολή Γεωπονικών Επιστημών</a>
+                    </h3>
+                    <div class="feature-text">4 τμήματα</div>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-content">
+                    <h3 class="feature-title">
+                        <a class="ablock" href="?page_id=13403&amp;page_id=13425">Σχολή Επιστημών Αποκατάστασης Υγείας</a>
+                    </h3>
+                    <div class="feature-text">3 τμήματα</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Campus -->
+    <section class="campus">
+        <h1>Our Global Campus</h1>
+        <p>University of Patras Campus</p>
+        <div class="row">
+            <div class="campus-col">
+                <img src="/smartclass_img/prosopsi.png" alt="Πρόσοψη">
+                <div class="layer"></div>
+            </div>
+            <div class="campus-col">
+                <img src="smartclass_img/sky_view.png" alt="Άποψη από ψηλά">
+                <div class="layer"></div>
+            </div>
+            <div class="campus-col">
+                <img src="smartclass_img/map.png" alt="Χάρτης">
+                <div class="layer"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JavaScript for ToggleMenu -->
+    <script>
+        var navLinks = document.getElementById("navLinks");
+
+        function showMenu() {
+            navLinks.style.right = "0";
+        }
+
+        function hideMenu() {
+            navLinks.style.right = "-200px";
+        }
+    </script>
+
+</body>
+</html>

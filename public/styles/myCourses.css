@@ -1,0 +1,146 @@
+/* myCourses.css */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f8fc;
+  color: #222;
+  margin: 0;
+  padding: 0;
+  background: url('../smartclass_img/elitis.jpg') no-repeat center center fixed;
+  background-size: cover;
+}
+
+
+.container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  background-color: white;
+  border-radius: 12px;  
+  box-shadow: 0 4px 10px rgba(0, 87, 184, 0.1);
+  
+}
+.breadcrumb {
+  display: inline-block !important; /* Αντικαθιστά flex ή grid */
+  white-space: nowrap;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #555;
+  text-align: left; /* ευθυγράμμιση αριστερά */
+  padding: 0; /* για σιγουριά */
+  
+}
+
+.breadcrumb > * {
+  display: inline; /* Κάνε όλα τα children inline */
+  margin: 0 0.15rem;
+}
+
+.breadcrumb a {
+  color: #2980b9;
+  text-decoration: none;
+  font-weight: 600;
+  margin: 0;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb .separator {
+  color: #888;
+  user-select: none;
+  margin: 0 0.15rem;
+}
+
+.breadcrumb span:not(.separator) {
+  color: #888;
+  font-weight: 600;
+  margin: 0;
+}
+
+h1 {
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  color: #222;
+}
+
+.my-courses-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.my-course-item {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.my-course-item:hover {
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+.course-link {
+  font-size: 1.2rem;
+  color: #0077cc;
+  text-decoration: none;
+}
+
+.course-link:hover {
+  text-decoration: underline;
+}
+
+.course-desc {
+  font-style: italic;
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+
+.grade {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-weight: 600;
+  color: #22863a; /* Πράσινο για βαθμολογία */
+}
+
+.no-grade {
+  color: #b03a2e; /* Κόκκινο για απουσία βαθμολογίας */
+  font-style: italic;
+}
+
+.course-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1.5rem;
+}
+
+.course-list li {
+  background-color: #fdfdfd;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.course-list a {
+  text-decoration: none;
+  color: #0056b3;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.course-list a:hover {
+  text-decoration: underline;
+  color: #003f88;
+}

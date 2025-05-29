@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>About Me - SmartClass</title>
+  <link rel="stylesheet" href="/styles/style.css">
+  <style>
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .profile-box {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      max-width: 1000px;
+      gap: 40px;
+      background-color: rgb(96, 69, 69)
+    }
+
+    .profile-box img {
+      width: 250px;
+      height: 250px;
+      object-fit: cover;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+
+    .profile-info {
+      max-width: 500px;
+      font-size: 1.2rem;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="header">
+    <nav>
+      <a href="/"><img src="/smartclass_img/logo.png" alt="Logo" /></a>
+      <div class="nav-links" id="navLinks">
+        <i class="fa fa-times" onclick="hideMenu()"></i>
+        <ul>
+          <li><a href="/">Αρχική</a></li>
+          <li><a href="/about">About us</a></li>
+          <li><a href="/courses">Μαθήματα</a></li>
+          {{#if user}}
+          <li><a href="/myCourses">Τα Μαθήματά μου</a></li>
+          <li><a href="/logout">Αποσύνδεση</a></li>
+          {{else}}
+          <li><a href="/register">Εγγραφή</a></li>
+          <li><a href="/login">Σύνδεση</a></li>
+          {{/if}}
+        </ul>
+      </div>
+      <i class="fa fa-bars" onclick="showMenu()"></i>
+    </nav>
+
+
+  <section class="profile-section">
+    <div class="profile-box">
+      <img src="/smartclass_img/aboutme.png" alt="My Photo" />
+      <div class="profile-info">
+        <h1>About the Developer</h1>
+        <p>Hi! I'm a 5th year Electrical and Computer Engineering student at the University of Patras.</p>
+        <p>This website was developed as part of the Web Development course.</p>
+        <p><em>I hope you like it!</em></p>
+      </div>
+    </div>
+  </section>
+  </section>
+
+  <script>
+    var navLinks = document.getElementById("navLinks");
+    function showMenu() {
+      navLinks.style.right = "0";
+    }
+    function hideMenu() {
+      navLinks.style.right = "-200px";
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <title>Επιλογή Σχολής</title>
+  
+  <link rel="stylesheet" href="styles/select-schools.css"/>
+</head>
+<body>
+  <section class="container">
+    <nav class="breadcrumb" aria-label="breadcrumb">
+      <a href="/">Αρχική</a>
+      <span class="separator">»</span>
+      <span>Επιλογή Σχολής</span>
+    </nav>
+
+    <h1>Επιλέξτε τη Σχολή σας</h1>
+    <p>Παρακαλώ επιλέξτε τη σχολή στην οποία ανήκετε για να δείτε τα αντίστοιχα μαθήματα.</p>
+
+    <form method="POST" action="/select-school" class="form-container">
+      <label for="school_id">Σχολή:</label>
+      <select name="school_id" id="school_id" required>
+        <option value="" disabled selected>-- Επιλέξτε Σχολή --</option>
+        {{#each schools}}
+          <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+
+      <button type="submit" class="btn">Αποθήκευση</button>
+    </form>
+  </section>
+</body>
+</html>

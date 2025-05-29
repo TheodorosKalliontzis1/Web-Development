@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/styles.css"> <!-- Αν έχεις αρχείο CSS -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8d7da;
+      color: #721c24;
+      text-align: center;
+      padding: 50px;
+    }
+    .error-box {
+      background-color: #f5c6cb;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+      max-width: 600px;
+    }
+    a {
+      color: #721c24;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-box">
+    <h1>⚠️ {{title}}</h1>
+    <p>{{message}}</p>
+
+    {{#if details}}
+      <pre>{{details}}</pre>
+    {{/if}}
+
+    <p><a href="/">Επιστροφή στην αρχική σελίδα</a></p>
+  </div>
+</body>
+</html>

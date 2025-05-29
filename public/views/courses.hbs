@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartClass</title>
+
+  <link rel="stylesheet" href="/styles/style.css" />
+  <link rel="stylesheet" href="/styles/courses.css" />
+
+  <!-- Google Fonts και Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+  />
+</head>
+<body>
+  <section class="header">
+    <nav>
+      <a href="/"><img src="/smartclass_img/logo.png" alt="Logo" /></a>
+      <div class="nav-links" id="navLinks">
+        <i class="fa fa-times" onclick="hideMenu()"></i>
+        <ul>
+          <li><a href="/">Αρχική</a></li>
+          <li><a href="/about_us">About us</a></li>
+          <li><a href="/courses">Μαθήματα</a></li>
+          {{#if user}}
+          <li><a href="/logout">Αποσύνδεση</a></li>
+          {{else}}
+          <li><a href="/register">Εγγραφή</a></li>
+          <li><a href="/login">Σύνδεση</a></li>
+          {{/if}}
+        </ul>
+      </div>
+      <i class="fa fa-bars" onclick="showMenu()"></i>
+    </nav>
+
+
+    <div class="courses-container">
+
+    <nav class="breadcrumb" aria-label="breadcrumb">
+      <a href="/courses">Πανεπιστήμιο Πατρών</a>
+      {{#if selectedSchool}}
+        <span class="separator">»</span>
+        <a href="/courses?schoolId={{selectedSchool.id}}">{{selectedSchool.name}}</a>
+      {{/if}}
+      {{#if selectedSemesterLabel}}
+        <span class="separator">»</span>
+        <span>{{selectedSemesterLabel}}ο Εξάμηνο</span>
+      {{/if}}
+    </nav>
+
+
+
+      {{!-- Αν δεν έχει επιλεγεί σχολή, δείξε λίστα σχολών --}}
+      {{#unless selectedSchool}}
+      <ul class="school-list">
+        {{#each schools}}
+        <li class="school-item">
+          <a href="/courses?schoolId={{this.id}}">
+            <span class="school-name">{{this.name}}</span>
+            <span class="school-note">({{this.acronym}})</span>
+            <span class="school-courses-count">{{this.coursesAvailable}} Διαθέσιμα μαθήματα</span>
+          </a>
+        </li>
+        {{/each}}
+      </ul>
+      {{/unless}}
+
+      {{!-- Αν έχει επιλεγεί σχολή --}}
+      {{#if selectedSchool}}
+      <div class="school-courses-section">
+        
+
+        {{!-- Λίστα εξάμηνων ως tabs --}}
+        <div class="semester-tabs">
+          {{#each semesters}}
+          <a href="/courses?schoolId={{../selectedSchool.id}}&semester={{this.id}}" class="semester-tab {{#ifEquals ../selectedSemester this.id}}active{{/ifEquals}}">
+            {{this.semester}}ο Εξάμηνο    {{this.course_count}} Διαθέσιμα Μαθήματα
+          </a>
+          {{/each}}
+        </div>
+
+        {{!-- Μαθήματα μόνο αν έχει επιλεγεί εξάμηνο --}}
+          
+          {{#if selectedSemester}}
+            {{#if courses.length}}
+              <ul class="course-list">
+                {{#each courses}}
+                  <li class="course-item">
+                    {{#if ../canViewDetails}}
+                    
+                      {{#ifEquals ../userSchoolId this.school_id}}    {{!-- Αν ο χρήστης είναι από την ίδια σχολή, δείξε σύνδεσμο --}}
+                        <a href="/courses/{{this.id}}"><strong>{{this.name}}</strong></a><br />
+                      {{else}}
+                        <strong>{{this.name}}</strong><br />
+                      {{/ifEquals}}
+                    {{else}}
+                    
+                      <strong>{{this.name}}</strong><br />
+                    {{/if}}
+                    <span>{{this.description}}</span><br />
+                    <em>Εξάμηνο: {{this.semester_id}}ο</em>
+                  </li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <p>Δεν υπάρχουν μαθήματα για το επιλεγμένο εξάμηνο.</p>
+            {{/if}}
+          {{else}}
+            <p>Επέλεξε εξάμηνο για να δεις τα μαθήματα.</p>
+          {{/if}}
+
+      </div>
+      {{/if}}
+
+      {{!-- Φόρμα προσθήκης μαθήματος για admin --}}
+      {{#if isAdmin}}
+      <div class="admin-course-form">
+        <h3>Προσθήκη Μαθήματος</h3>
+        <form action="/courses/add" method="POST">
+          <label for="school">Σχολή:</label>
+          <select name="school_id" id="school" required>
+            {{#each schools}}
+            <option value="{{this.id}}">{{this.name}}</option>
+            {{/each}}
+          </select>
+
+          <label for="semester_id">Εξάμηνο:</label>
+          <input type="number" name="semester_id" id="semester_id" min="1" max="10" required>
+
+
+          <label for="name">Όνομα Μαθήματος:</label>
+          <input type="text" name="name" required />
+
+          <label for="description">Περιγραφή:</label>
+          <textarea name="description" rows="3"></textarea>
+
+          <button type="submit">Προσθήκη</button>
+        </form>
+      </div>
+      {{/if}}
+
+    </div>
+  </section>
+
+  <script>
+    function showMenu() {
+      document.getElementById("navLinks").style.right = "0";
+    }
+    function hideMenu() {
+      document.getElementById("navLinks").style.right = "-200px";
+    }
+  </script>
+</body>
+</html>

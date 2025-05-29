@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartClass Εγγραφή</title>
+    <link rel="stylesheet" href="styles/login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<script src="/scripts/arrow.js"></script>
+
+<body>
+    <section class="header">
+        <nav>
+            <a href="/"><img src="/smartclass_img/logo.png" alt="Logo"></a>
+            <div class="nav-links" id="navLinks">
+                <i class="fa fa-times" onclick="hideMenu()"></i>
+                <ul>
+                    <li><a href="/">Αρχική</a></li>
+                    <li><a href="/abou_us">About us</a></li>
+                    <li><a href="/register">Eγγραφή</a></li>
+                    <li><a href="/courses">Μαθήματα</a></li>
+                    <li><a href="login">Σύνδεση</a></li>
+                </ul>
+            </div>
+            <i class="fa fa-bars" onclick="showMenu()"></i>
+        </nav>
+
+        <div class="container">
+            <div class="box form-box">
+                <header>Εγγραφή</header>
+                
+                {{#if error}}
+                    <div style="color: red; margin-bottom: 10px;">
+                        {{error}}
+                    </div>
+                {{/if}}
+                
+    <form action="/register" method="post">
+        <div class="field input">
+            <label for="username">Όνομα</label>
+            <input type="text" name="username" id="username" required>
+        </div>
+
+        <div class="field input">
+            <label for="surname">Επώνυμο</label>
+            <input type="text" name="surname" id="surname" required>
+        </div>
+        <div class="field input">
+            <label for="student_id">Αριθμός Μητρώου</label>
+            <input type="text" name="student_id" id="student_id" required>
+        </div>
+
+        <div class="field input">
+            <label for="email">E-mail</label>
+            <input type="email" name="email" id="email" required>
+        </div>
+
+        <div class="field input">
+            <label for="password">Κωδικός</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+
+        <div class="field button">
+            <input type="submit" class="btn" name="submit" value="Εγγραφή">
+        </div>
+    </form>
+
+
+                <div class="links">
+                    Έχετε ήδη λογαριασμό; <a href="login.html">Συνδεθείτε!</a>
+                </div>
+            </div>
+        </div>
+</section>
+
+    <script>
+        var navLinks = document.getElementById("navLinks");
+
+        function showMenu() {
+            navLinks.style.right = "0";
+        }
+
+        function hideMenu() {
+            navLinks.style.right = "-200px";
+        }
+    </script>
+</body>
+</html>

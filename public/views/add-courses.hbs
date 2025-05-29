@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartClass</title>
+
+  <link rel="stylesheet" href="/styles/style.css">
+  <link rel="stylesheet" href="/styles/courses.css">
+
+  <!-- Google Fonts και Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+
+<section class="header">
+  <nav>
+    <a href="/"><img src="/smartclass_img/logo.png" alt="Logo"></a>
+    <div class="nav-links" id="navLinks">
+      <i class="fa fa-times" onclick="hideMenu()"></i>
+      <ul>
+        <li><a href="/main">Αρχική</a></li>
+        <li><a href="/about_us">About us</a></li>
+        <li><a href="/register">Εγγραφή</a></li>
+        <li><a href="/courses">Courses</a></li>
+        <li><a href="/login">Σύνδεση</a></li>
+      </ul>
+    </div>
+    <i class="fa fa-bars" onclick="showMenu()"></i>
+  </nav>
+  <div class="text-box">
+            <h1>Καλωσήρθατε στο SmartClass</h1>
+            <p>Μια Εφαρμογή από Φοιτητές για Φοιτητές</p>
+            {{#if user.role===admin}}
+            <p><strong>{{user.name}}</strong>, είσαι συνδεδεμένος ως Διαχειριστής!</p>
+            {{else if user.role===student}}
+            <p><strong>{{user.name}}</strong>, είσαι συνδεδεμένος!</p>
+            {{else if user.role===professor}}
+            <p><strong>{{user.name}}</strong>, Καλωσήρθατε κ.Καθηγητά!</p>
+            {{else}}
+            <p>Καλωσήρθες! Παρακαλώ συνδέσου ή εγγράψου για να συνεχίσεις.</p>
+            {{/if}}
+            <a href="#" class="hero-btn">Κάνε τώρα την Εγγραφή σου!</a>
+            <a href="#" class="hero-btn">FAQs</a>
+        </div>
+
+    <h2>Προσθήκη Μαθήματος</h2>
+
+    <form method="POST" action="/admin/add-course">
+    <label for="school">Σχολή:</label>
+    <select name="school_id" required>
+        {{#each schools}}
+        <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+    </select>
+
+    <label for="semester_id">Εξάμηνο:</label>
+    <select name="semester_id" required>
+        {{#each semesters}}
+        <option value="{{this.id}}">Εξάμηνο {{this.semester_number}} (Σχολή ID: {{this.school_id}})</option>
+        {{/each}}
+    </select>
+
+    <label for="name">Όνομα Μαθήματος:</label>
+    <input type="text" name="name" required>
+
+    <label for="description">Περιγραφή:</label>
+    <textarea name="description"></textarea>
+
+    <button type="submit">Προσθήκη</button>
+    </form>
+
+</section>

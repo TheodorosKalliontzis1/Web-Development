@@ -1,0 +1,31 @@
+/* Keep mx_MessageContextMenu position correct*/
+body{
+    height: 100%;
+    width: 100%;
+    position: absolute;
+}
+
+/* Message box */
+/***************/
+/* fix message box too thin */
+.mx_EventTile_line {
+    margin-right: 0 !important;
+}
+/* fix caused expand button cannot click caused by fix message box too thin */
+.mx_EventListSummary_toggle{
+    z-index: 100;
+    position: relative;
+}
+
+.mx_AuthFooter{
+    display: none;
+}
+
+/*right panel on top (prevent page become blank after click timeline and locate from right panel)*/
+.mx_RightPanel_ResizeWrapper{
+    position: absolute!important;
+    right: 0;
+    height: 94%!important;
+    top: 6%;
+    z-index: 1000;
+}

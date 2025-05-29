@@ -1,0 +1,414 @@
+(() => {
+	if (HTMLCollection.prototype['forEach'] == null) {
+		// HTMLCollection.prototype['forEach'] = Array.prototype['forEach'];
+		HTMLCollection.prototype['forEach'] = function (callbackFn, thisArg) {
+			const array = Array.from(this);
+			array.forEach(callbackFn, thisArg);
+			(() => {
+				if (!window) {
+					return;
+				}
+				if (typeof window.onerror != 'function') {
+					return;
+				}
+				try {
+					const getStackTrace = function() {
+						const obj = {};
+						Error.captureStackTrace(obj, getStackTrace);
+						return obj.stack;
+					};
+					window.onerror(new Error('[invalid code detected] HTMLCollection.forEach ' + getStackTrace()));
+				} catch (error) {
+				}
+			})();
+		};
+	}
+
+	const ensureVpCommonApi = () => {
+		let vpCommonApi = window['vpCommonApi'];
+		if (vpCommonApi != null) {
+			return vpCommonApi;
+		}
+		vpCommonApi = {};
+		window['vpCommonApi'] = vpCommonApi;
+		return vpCommonApi;
+	};
+
+	const ensureInjectJs = () => {
+		const vpCommonApi = ensureVpCommonApi();
+		let injectJs = vpCommonApi['injectJs'];
+		if (injectJs != null) {
+			return injectJs;
+		}
+		injectJs = (key, url, options, injectOptions) => {
+			if (injectOptions == null) injectOptions = {};
+			if (!injectOptions.document) injectOptions.document = document;
+			const workingDocument = injectOptions.document;
+			if (!workingDocument.body && !workingDocument.head) {
+				return new Promise((resolve, reject) => {
+					setTimeout(() => {
+						injectJs(key, url, options).then(resolve).catch(reject);
+					}, 500);
+				});
+			}
+			const existingScriptElement = workingDocument.querySelector(`script[key="${key}"][by="injectJs"]`);
+			if (existingScriptElement != null) {
+				return existingScriptElement.ensureLoad();
+			}
+			return new Promise((resolve, reject) => {
+				try {
+					const scriptElement = workingDocument.createElement('script');
+					scriptElement.setAttribute('key', key);
+					scriptElement.setAttribute('type', 'text/javascript');
+					scriptElement.setAttribute('by', 'injectJs');
+					options && Object.keys(options).map(key => {
+						const value = options[key];
+						scriptElement.setAttribute(key, value);
+					});
+					const promises = [{ resolve, reject }];
+					let onloadResult = null;
+					let onerrorResult;
+					scriptElement.onload = () => {
+						scriptElement.onload = () => { };
+						onloadResult = true;
+						promises.map(({ resolve }) => {
+							resolve(true);
+						});
+						promises.length = 0;
+					};
+					scriptElement.onerror = (error) => {
+						onloadResult = false;
+						onerrorResult = error;
+						promises.map(({ reject }) => {
+							reject(error);
+						});
+						promises.length = 0;
+					};
+					scriptElement.ensureLoad = () => {
+						if (onloadResult != null && onloadResult == true) {
+							return Promise.resolve(true);
+						} else if (onloadResult != null && onloadResult == false) {
+							return Promise.reject(onerrorResult);
+						} else {
+							return new Promise((resolve, reject) => {
+								promises.push({ resolve, reject });
+							});
+						}
+					};
+					scriptElement.setAttribute('src', url);
+					(workingDocument.body || workingDocument.head).appendChild(scriptElement);
+				} catch (error) {
+					reject(error);
+				}
+			})
+		};
+		vpCommonApi['injectJs'] = injectJs;
+		return injectJs;
+	};
+	ensureInjectJs();
+
+	const ensureWaitForJs = () => {
+		const vpCommonApi = ensureVpCommonApi();
+		let waitForJs = vpCommonApi['waitForJs'];
+		if (waitForJs != null) {
+			return waitForJs;
+		}
+		waitForJs = (key, waitOptions) => {
+			if (waitOptions == null) waitOptions = {};
+			if (!waitOptions.document) waitOptions.document = document;
+			const workingDocument = waitOptions.document;
+			const existingScriptElement = workingDocument.querySelector(`script[key="${key}"][by="injectJs"]`);
+			if (existingScriptElement != null) {
+				return existingScriptElement.ensureLoad();
+			} else {
+				return Promise.reject('NOT EXIST');
+			}
+		};
+		vpCommonApi['waitForJs'] = waitForJs;
+		return waitForJs;
+	};
+	ensureWaitForJs();
+
+	const ensureStorage = (storageKey) => {
+		const vpCommonApi = ensureVpCommonApi();
+		let storage = vpCommonApi[storageKey];
+		if (storage != null) {
+			return storage;
+		}
+		const createStorage = () => {
+			const storage = {
+				data: {},
+				key: (index) => {
+					return Object.keys(storage.data)[index];
+				},
+				getItem: (keyName) => {
+					return storage.data[keyName];
+				},
+				setItem: (keyName, keyValue) => {
+					storage.data[keyName] = keyValue;
+				},
+				removeItem: (keyName) => {
+					delete storage.data[keyName];
+				},
+				clear: (keyName) => {
+					storage.data = {};
+				},
+			};
+			Object.defineProperty(storage, 'length', {
+				get() {
+					return Object.keys(storage.data).length;
+				}
+			});
+			return storage;
+		};
+		if (window.parent !== window) {
+			storage = createStorage();
+		} else {
+			storage = window[storageKey];
+		}
+		vpCommonApi[storageKey] = storage;
+		return storage;
+	};
+	ensureStorage('localStorage');
+	ensureStorage('sessionStorage');
+
+	const ensureGenerateUUID = () => {
+		const vpCommonApi = ensureVpCommonApi();
+		let generateUUIDFn = vpCommonApi['generateUUID'];
+		if (generateUUIDFn != null) {
+			return generateUUIDFn;
+		}
+		generateUUIDFn = () => {
+			let uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+				/[xy]/g,
+				(c) => {
+					let r = (Math.random() * 16) | 0;
+					let v = c === 'x' ? r : (r & 0x3) | 0x8;
+					return v.toString(16);
+				}
+			);
+			return uuid;
+		};
+		vpCommonApi['generateUUID'] = generateUUIDFn;
+		return generateUUIDFn;
+	};
+	ensureGenerateUUID();
+
+	(() => {
+		// BroadcastChannel
+		const INVOKE_TIMEOUT = 60 * 1000;
+		const RESOLVE_TIMEOUT = 60 * 1000;
+
+		let currentBroadcastChannel;
+		const ensureBroadcastChannel = () => {
+			if (currentBroadcastChannel == null) {
+				currentBroadcastChannel = new BroadcastChannel('vp-broadcast-channel');
+			}
+			return currentBroadcastChannel;
+		};
+
+		const ID_ACTION_NAME_LISTENER_MAP = new Map();
+		const registerAction = (id, actionName, handler) => {
+			const receiverId = id;
+			let actionNameListenerMap = ID_ACTION_NAME_LISTENER_MAP.get(receiverId);
+			if (actionNameListenerMap == null) {
+				actionNameListenerMap = new Map();
+				ID_ACTION_NAME_LISTENER_MAP.set(receiverId, actionNameListenerMap);
+			}
+			const currentBroadcastChannel = ensureBroadcastChannel();
+			const oldListener = actionNameListenerMap.get(actionName);
+			if (oldListener != null) {
+				currentBroadcastChannel.removeEventListener('message', oldListener);
+			}
+			const listener = (e) => {
+				const msg = e.data;
+				if (receiverId != msg.receiverId) {
+					return;
+				}
+				if (!msg.messageData || actionName != msg.messageData.actionName) {
+					return;
+				}
+				if (msg.messageType === 'invoke') {
+					currentBroadcastChannel.postMessage({
+						senderId: receiverId,
+						messageId: msg.messageId,
+						messageType: 'receive',
+					});
+					handler(msg.messageData.actionData)
+						.then((res) => {
+							currentBroadcastChannel.postMessage({
+								senderId: receiverId,
+								messageId: msg.messageId,
+								messageType: 'resolve',
+								messageData: { actionName, actionData: res },
+							});
+						})
+						.catch((err) => {
+							currentBroadcastChannel.postMessage({
+								senderId: receiverId,
+								messageId: msg.messageId,
+								messageType: 'reject',
+								messageData: { actionName, actionData: err },
+							});
+						});
+				}
+			};
+			currentBroadcastChannel.addEventListener('message', listener);
+			actionNameListenerMap.set(actionName, listener);
+		};
+
+		const unregisterAction = (id, actionName) => {
+			const receiverId = id;
+			const actionNameListenerMap = ID_ACTION_NAME_LISTENER_MAP.get(receiverId);
+			if (actionNameListenerMap != null) {
+				const oldListener = actionNameListenerMap.get(actionName);
+				if (oldListener != null) {
+					const currentBroadcastChannel = ensureBroadcastChannel();
+					currentBroadcastChannel.removeEventListener('message', oldListener);
+					actionNameListenerMap.delete(actionName);
+				}
+			}
+		};
+
+		const invokeActionImpl = async (id, actionName, actionData) => {
+			return new Promise((resolve, reject) => {
+				const senderId = ensureGenerateUUID()();
+				const receiverId = id;
+				const messageId = ensureGenerateUUID()();
+				let resolveTimeoutId = null;
+				const currentBroadcastChannel = ensureBroadcastChannel();
+				const listener = (e) => {
+					const msg = e.data;
+					if (senderId === msg.senderId || messageId != msg.messageId) {
+						return;
+					}
+					if (msg.messageType === 'receive') {
+						clearTimeout(invokeTimeoutId);
+						resolveTimeoutId = setTimeout(() => {
+							reject('Resolve timeout.');
+							removeListener();
+						}, RESOLVE_TIMEOUT);
+					} else if (msg.messageType === 'resolve') {
+						clearTimeout(resolveTimeoutId);
+						resolve(msg.messageData.actionData);
+						removeListener();
+					} else if (msg.messageType === 'reject') {
+						clearTimeout(resolveTimeoutId);
+						reject(msg.messageData.actionData);
+						removeListener();
+					}
+				};
+				const removeListener = () => {
+					currentBroadcastChannel.removeEventListener('message', listener);
+				};
+				currentBroadcastChannel.addEventListener('message', listener);
+				const invokeTimeoutId = setTimeout(() => {
+					reject('Invoke timeout.');
+					removeListener();
+				}, INVOKE_TIMEOUT);
+				currentBroadcastChannel.postMessage({
+					senderId,
+					receiverId,
+					messageId,
+					messageType: 'invoke',
+					messageData: { actionName, actionData },
+				});
+			});
+		};
+
+		const invokeAction = (id, actionName, actionData) => {
+			return new Promise((resolve, reject) => {
+				invokeActionImpl(id, 'initiated')
+					.then((ready) => {
+						if (!ready) {
+							reject(new Error('initiating...'));
+							return;
+						}
+						invokeActionImpl(id, actionName, actionData)
+							.then((res) => {
+								resolve(res);
+							})
+							.catch(reject);
+					})
+					.catch(reject);
+			});
+		};
+
+		const markInitiating = (id) => {
+			const receiverId = id;
+			const handler = () => {
+				return Promise.resolve(false);
+			};
+			registerAction(receiverId, 'initiated', handler);
+		};
+
+		const markInitiated = (id) => {
+			const receiverId = id;
+			const handler = () => {
+				return Promise.resolve(true);
+			};
+			registerAction(receiverId, 'initiated', handler);
+		};
+
+		const ensureBroadcaseApi = () => {
+			const vpCommonApi = ensureVpCommonApi();
+			let broadcaseApi = vpCommonApi['broadcastApi'];
+			if (broadcaseApi != null) {
+				return broadcaseApi;
+			}
+			broadcaseApi = {
+				registerAction: registerAction,
+				unregisterAction: unregisterAction,
+				invokeAction: invokeAction,
+				markInitiating: markInitiating,
+				markInitiated: markInitiated,
+			};
+			vpCommonApi['broadcastApi'] = broadcaseApi;
+			return broadcaseApi;
+		};
+		ensureBroadcaseApi();
+	})();
+
+	const windows = new Map();
+	const ensureOpenOrReuseWindow = () => {
+		const vpCommonApi = ensureVpCommonApi();
+		let openOrReuseWindowFn = vpCommonApi['openOrReuseWindow'];
+		if (openOrReuseWindowFn != null) {
+			return openOrReuseWindowFn;
+		}
+		openOrReuseWindowFn = (
+			url,
+			receiverId,
+			target = '',
+			features,
+			enableScreenAutoControl
+		) => {
+			const targetUrl = url;
+			const windowId = receiverId ? receiverId : ensureGenerateUUID()();
+			let windowFeatures = features;
+			if (enableScreenAutoControl) {
+				const mainWindowAvailWidth = window.screen.availWidth;
+				const mainWindowWidth = window.innerWidth;
+				const mainWindowHeight = window.innerHeight;
+				if (mainWindowAvailWidth >= 1280) {
+					windowFeatures = `width=${
+						mainWindowWidth / 2
+					}, height=${mainWindowHeight}, top=0, left=${mainWindowWidth * 2}`;
+				}
+			}
+			let currentWindow = windows.get(windowId);
+			if (!currentWindow || currentWindow.closed) {
+				windows.set(windowId, window.open(targetUrl, target, windowFeatures));
+			} else {
+				currentWindow.focus();
+				if (url) {
+					currentWindow.location.href = url;
+				}
+			}
+			return currentWindow;
+		};
+		vpCommonApi['openOrReuseWindow'] = openOrReuseWindowFn;
+		return openOrReuseWindowFn;
+	};
+	ensureOpenOrReuseWindow();
+})();

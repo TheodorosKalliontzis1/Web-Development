@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name=" viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartClass Log In</title>
+    <link rel="stylesheet" href="/styles/login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-
+awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<script src="/scripts/arrow.js"></script>
+
+<body>
+    <section class = "header">
+        <nav>
+            <a href = "/"><img src="smartclass_img/logo.png"></a>
+            <div class = "nav-links" id="navLinks">
+                <i class="fa fa-times"onclick = "hideMenu()"></i>
+                <ul>
+                    <li><a href = "/">Αρχική</a></li>
+                    <li><a href = "/about_us">About us</a></li>
+                    <li><a href = "/register">Eγγραφή</a></li>
+                    <li><a href = "/courses">Μαθήματα</a></li>
+                    <li><a href = "/login">Σύνδεση</a></li>
+                </ul>
+            </div>
+            <i class="fa fa-bars" onclick = "showMenu()"></i>
+        </nav>
+        <div class = "container">
+            <div class = "box form-box">
+                    <header>Σύνδεση</header>
+                    <form action="/login" method = "post">
+                        <div class ="field input">
+                            <label for="email">E-mail</label>
+                            <input type="email" name="email" id="email" required>
+                        </div>
+                    
+                        <div class ="field input">
+                            <label for="password">Κωδικός</label>
+                            <input type="password" name="password" id="password" required>
+                        </div>
+
+                        <div class ="field button">
+                            <input type="submit" class="btn" name="submit" value="Σύνδεση" required>
+                    </form>
+                    <div class="links">
+                        Δεν έχετε λογαριασμό; <a href="register.html">Δημιουργήστε έναν!</a>
+                    </div>
+            </div>
+        </div>
+    </section>
+
+<!-- Φόρμα Σύνδεσης -->
+        
+
+<!----JavaScript for ToggleMenu---->
+<script>
+    var navLinks = document.getElementById("navLinks");
+
+    function showMenu(){
+        navLinks.style.right = "0";
+    }
+
+    function hideMenu(){
+        navLinks.style.right = "-200px";
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{course.name}} - Λεπτομέρειες Μαθήματος</title>
+  <link rel="stylesheet" href="../styles/style.css" />
+  <link rel="stylesheet" href="../styles/course_details.css" />
+</head>
+<body>
+<section>
+  <nav class="breadcrumb" aria-label="breadcrumb">
+    <a href="/courses">Μαθήματα</a><span class="separator">»</span>
+    <a href="/courses?schoolId={{course.school_id}}">{{course.school_name}}</a><span class="separator">»</span>
+    <a href="/courses?schoolId={{course.school_id}}&semester={{course.semester_id}}">{{course.semester_number}}ο Εξάμηνο</a><span class="separator">»</span>
+    <span>{{course.name}}</span>
+  </nav>
+</section>
+<section>
+  <h1>{{course.name}}</h1>
+
+  <div class="course-info">
+    <p><span class="label">Σχολή:</span> {{course.school_name}}</p>
+    <p><span class="label">Εξάμηνο:</span> {{course.semester_number}}ο</p>
+    <p><span class="label">Περιγραφή:</span> {{course.description}}</p>
+
+    {{!-- Αν έχεις κι άλλα πεδία όπως καθηγητή, ώρες, ect. πρόσθεσέ τα εδώ --}}
+  </div>
+
+  <a href="/courses?schoolId={{course.school_id}}&semester={{course.semester_id}}" class="back-link">← Επιστροφή στα μαθήματα</a>
+</section>
+<section class="announcements">
+  <h2>Ανακοινώσεις</h2>
+
+  {{#if announcements.length}}
+    <ul>
+      {{#each announcements}}
+        <li>
+          <strong>{{this.title}}</strong> - {{this.created_at}}
+          <p>{{this.content}}</p>
+        </li>
+      {{/each}}
+    </ul>
+  {{else}}
+    <p>Δεν υπάρχουν ανακοινώσεις για αυτό το μάθημα.</p>
+  {{/if}}
+      {{#if isProfessor}}
+    <hr>
+    <h3>Προσθήκη Νέας Ανακοίνωσης</h3>
+    <form method="POST" action="/myCourses/{{course.id}}" class="announcement-form">
+      <div>
+        <label for="title">Τίτλος</label><br>
+        <input type="text" id="title" name="title" required />
+      </div>
+      <div>
+        <label for="content">Περιεχόμενο</label><br>
+        <textarea id="content" name="content" rows="4" required></textarea>
+      </div>
+      <button type="submit">Αποθήκευση Ανακοίνωσης</button>
+    </form>
+  {{/if}}
+
+</section>
+<section class="resources">
+  <h2>Πόροι Μαθήματος</h2>
+  {{#if resources.length}}
+    <ul>
+      {{#each resources}}
+        <div>
+          <p><strong>{{title}}</strong></p>
+          <a href="{{file_path}}" download>Κατέβασε αρχείο</a>
+        </div>
+      {{/each}}
+    </ul>
+  {{else}}
+    <p>Δεν υπάρχουν διαθέσιμοι πόροι για αυτό το μάθημα.</p>
+  {{/if}}
+
+  {{#if isProfessor}}
+  <section class="upload-notes">
+    <h2>Ανέβασε Σημειώσεις Μαθήματος</h2>
+    <form action="/myCourses/{{course.id}}/resources" method="POST" enctype="multipart/form-data">
+      <label for="notesTitle">Τίτλος Σημειώσεων:</label>
+      <input type="text" name="title" required />
+
+      <label for="notesFile">Επιλογή Αρχείου:</label>
+      <input type="file" name="resourceFile" accept=".pdf,.doc,.docx,.ppt,.pptx" required />
+
+      <button type="submit">Ανέβασε</button>
+    </form>
+    {{/if}}
+  </section>
+
+  
+</body>
+</html>

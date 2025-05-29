@@ -1,0 +1,3397 @@
+(() => {
+    const getWorkingWindow = () => {
+        const workingWindow = window['workingWindow'];
+        if (workingWindow != null) {
+            return workingWindow;
+        }
+        return window;
+    };
+    const PROP_ANIMATIONS_JSON = 'animations_json';
+    const PROP_RESOURCE_BASE_URL = 'resource_base_url';
+
+    const getWebDiagramBabylonJsBridgeUtilFunctions = () => {
+        return WebDiagramBabylonJsBridge.utilFunctions;
+    };
+    
+    
+    
+    if (window.customElements.get('character-3d') == null) {
+        'use strict';    
+        
+        
+        const FACE_CAMERA_HEAD_ORIENTATION = 'face camera';
+        const HORIZONTAL_HEAD_ORIENTATION = 'horizontal';
+        const FOLLOW_PREVIOUS_ACTION_HEAD_ORIENTATION = 'follow previous action';
+        
+        const isSingleFrameForActionProperties = (originalDuration, playCount, startRatio, endRatio) => {
+            const workingWindow = getWorkingWindow();
+            const WebDiagramBabylonJsBridge = workingWindow['WebDiagramBabylonJsBridge'];
+
+            if (WebDiagramBabylonJsBridge == null) {
+                return false;
+            }
+            
+            
+
+            return WebDiagramBabylonJsBridge['isSingleFrameAction'](originalDuration, playCount, startRatio, endRatio);
+        };
+        
+        const isSingleFrameForAction = (action) => {
+            const actionActualDuration = getActionActualDuration(action);
+            const playCount = action.playCount;
+
+            const startRatio = action.startRatio || 0;
+            const endRatio = action.endRatio || 1;
+
+            return isSingleFrameForActionProperties(actionActualDuration, playCount, startRatio, endRatio);
+        };
+        
+        
+        
+        const createTweenWithEnterAndExitCallback = (duration, tweenEntered, tweenExited, isNotExitOnSeekBackward = null, isNotExitOnComplete = null) => {
+            const tween = gsap.to({
+                progress: 0
+            }, {
+                progress: 1,
+                duration: duration,
+
+                onStart: () => {
+                    tweenEntered(tween);
+                },
+
+                onComplete: () => {
+                    if (!isNotExitOnComplete || !isNotExitOnComplete()) {
+                        tweenExited();
+                    }
+                },
+
+                onUpdate: () => {
+                    // If playhead seek backward, no tween exit event is available, 
+                    // so use progress 0 to indicate leave by seek backward,
+                    // if seek forward, there is onStart() and onComplete() events so no problem.
+                    if (tween.progress() === 0 && (!isNotExitOnSeekBackward || !isNotExitOnSeekBackward())) {      
+                        tweenExited();
+                    } else {
+                        tweenEntered(tween);
+                    }
+                }
+            });
+            
+            return tween;
+        };
+        
+        
+        
+        const CHARACTER_3D_PREVIEW_CLASS_NAME = 'character-3d-preview';
+        const CHARACTER_3D_LOADING_URL = 'https://cdn-latest.visual-paradigm.com/diagrams/js/character-3d/loading.svg';
+
+        const cloneActionObject = (action, seen) => {
+            return cloneObject(action, seen);
+        };
+        
+        const cloneObject = (obj, seen) => {
+            if (seen == null) {
+                seen = new Set();
+            }
+            
+            
+            
+            
+            if (typeof obj !== 'object' || obj === null) {
+              // If it's not an object (or it's null), return the value as it is (it's a primitive)
+              return obj;
+            }
+            
+            
+            // If the object has been seen before, we have a cyclic reference, so we skip it
+            if (seen.has(obj)) {
+                return undefined; // Skip cyclic references
+            }
+
+            // Mark the current object as seen by adding it to the Set
+            seen.add(obj);
+            
+
+            const clone = Array.isArray(obj) ? [] : {};
+
+            for (const key in obj) {
+              if (Object.prototype.hasOwnProperty.call(obj, key)) {              
+                const value = obj[key];
+
+                // Check if the value is a primitive
+                if (typeof value === 'object' && value !== null) {
+                  // Recursively process objects or arrays
+                  const deepCloneValue = cloneObject(value, seen);
+                  if (deepCloneValue !== undefined) {
+                    clone[key] = deepCloneValue;
+                  }
+                } else if (typeof value !== 'object' || value === null) {
+                  // Assign primitive value directly
+                  clone[key] = value;
+                }
+              }
+            }
+            
+            
+            // Remove the object from the seen set before returning (to allow other independent objects to be processed properly)
+            seen.delete(obj);
+            
+            
+            return clone;
+        };
+
+        
+        const getActionActualDuration = (action) => {
+            const duration = action.duration;
+
+            const startRatio = action.startRatio || 0;
+            const endRatio = action.endRatio || 1;
+
+            const trimmedStartDuration = duration * startRatio;
+            const trimmedEndDuration = duration * (1 - endRatio);
+
+            return duration - trimmedStartDuration - trimmedEndDuration;            
+        };
+        
+        const getActionActualDurationConsiderIncompleteAction = (action) => {
+            const duration = getActionActualDuration(action);
+            
+            const playCount = action.playCount;
+            
+            if (playCount < 1) {
+                return duration * playCount;
+            }
+            
+            
+            return duration;
+        };
+
+        const getActionDurationWithPlayCount = (action) => {
+            const actionDuration = getActionActualDuration(action);
+            
+            if (Number.isInteger(action.playCount)) {
+                return actionDuration;
+            };
+            const durationWithPlayCount = (action.playCount - Math.floor(action.playCount)) * actionDuration;
+
+            return durationWithPlayCount;
+        };
+
+
+
+
+        class Character3D extends HTMLElement {
+            static get observedAttributes() {
+                return [
+                    PROP_ANIMATIONS_JSON
+                ];
+            }
+            
+            useCharacterAction(action) {
+                const localCharacter = this.character;
+                
+                if (localCharacter != null) {
+                    action(localCharacter);
+                }
+            }
+            
+            cellStateStartResize() {
+                this.useCharacterAction((characterParameter) => {
+                    characterParameter.cellStateStartResize();
+                });
+            }
+
+            cellStateResetResize(forCancel) {
+                this.useCharacterAction((characterParameter) => {
+                    characterParameter.cellStateResetResize(forCancel);
+                });
+            }
+
+            cellStateFireCellResizedWithVertexHandler(cellStateBounds) {
+                this.useCharacterAction((characterParameter) => {
+                    characterParameter.cellStateFireCellResizedWithVertexHandler(cellStateBounds);
+                });
+            }
+
+
+            createWaitForLoadedFromChangedAnimationsJsonQueue() {
+                const result = {
+                };
+                
+                const requests = [
+                ];
+                
+                result.endLoadFromChangedAnimationsJson = function() {
+                    requests.forEach((eachRequest) => {
+                        const {
+                            resolve
+                        } = eachRequest;
+                        
+                        resolve();
+                    });
+                };
+                
+                result.addRequest = () => {
+                    return new Promise((resolve, reject) => {
+                        requests.push({
+                            resolve
+                        });
+                    });
+                };
+                
+                return result;
+            }
+            
+            beginLoadFromChangedAnimationsJson() {
+                this.waitForLoadedFromChangedAnimationsJsonQueue = this.createWaitForLoadedFromChangedAnimationsJsonQueue();
+            }
+            
+            endLoadFromChangedAnimationsJson() {
+                this.waitForLoadedFromChangedAnimationsJsonQueue.endLoadFromChangedAnimationsJson();
+                delete this.waitForLoadedFromChangedAnimationsJsonQueue;
+            }
+            
+            
+            checkWaitForLoadedFromChangedAnimationsJson() {
+                let nextPromise = null;
+                
+                const localWaitForLoadedFromChangedAnimationsJsonQueue = this.waitForLoadedFromChangedAnimationsJsonQueue;
+                
+                if (localWaitForLoadedFromChangedAnimationsJsonQueue != null) {
+                    nextPromise = localWaitForLoadedFromChangedAnimationsJsonQueue.addRequest();
+                } else {
+                    nextPromise = Promise.resolve();
+                }
+                
+                return nextPromise;
+            }
+            
+            clearBlendActions() {
+                this.iterateBlendActionIds((eachBlendActionId) => {
+                    const blendActionObject = this.getActionObject(eachBlendActionId);
+                    
+                    if (blendActionObject != null) {
+                        this.deleteFromIdActionObjectMap(eachBlendActionId);
+
+                        blendActionObject.destroy();
+                    }
+                });
+                
+                this.clearBlendActionIds();
+            }
+            
+            clearActions() {
+                this.clearBlendActions();
+                
+                delete this.actionObjectSought;
+                
+                this.clearCurrentAction();
+                this.clearCurrentActionObject();
+                
+                this.iterateActions((eachAction) => {
+                    const actionId = eachAction.id;
+
+                    const actionObject = this.getActionObject(actionId);
+                    
+                    if (actionObject != null) {
+                        this.deleteFromIdActionObjectMap(actionId);
+
+                        actionObject.destroy(this.destroyForSwitchActiveView);
+                    }
+                });
+                
+                delete this.actions;
+            }
+            
+            loadBlendAction(elementCharacter3dController, previousActionObject, actionObject, startTime, duration, easing, previousActionStartTime, previousActionSpeed, actionSpeed) {
+                return elementCharacter3dController.loadBlendAction(previousActionObject, actionObject, startTime, duration, easing, previousActionStartTime, previousActionSpeed, actionSpeed);
+            }
+            
+            loadAction(elementCharacter3dController, eachAction) {
+                const characterFamilyName = this.getCharacterFamilyName();
+                const characterAssetId = this.getCharacterAssetId();
+                
+                return elementCharacter3dController.loadAction(this.character, eachAction, characterFamilyName, characterAssetId, this.actions);
+            }
+            
+            
+            
+            
+            postSetActionsAction() {
+                this.sortActionsByStartTime();
+                this.normalizedActions = this.calculateNormalizedActions();                            
+            }
+            
+            addRequestToWaitForCharacterLoadedQueue(resolve) {
+                this.waitForCharacterLoadedQueue.addRequest(resolve);
+            }
+            
+            checkWaitForCharacterReady() {
+                return new Promise((resolve, reject) => {
+                    if (this.character != null) {
+                        resolve();
+                        
+                        return;
+                    }
+                    
+                    
+                    if (this.waitForCharacterLoadedQueue == null) {
+                        this.waitForCharacterLoadedQueue = this.createWaitForCharacterLoadedQueue();
+                    }
+                    
+                    this.addRequestToWaitForCharacterLoadedQueue(resolve);
+                });
+            }
+            
+            createWaitForCharacterLoadedQueue() {
+                const result = {
+                };
+                
+                const requests = [
+                ];
+                
+                result.endLoadCharacter = function() {
+                    requests.forEach((eachRequest) => {
+                        const {
+                            resolve
+                        } = eachRequest;
+                        
+                        resolve();
+                    });
+                };
+                
+                result.addRequest = (resolve) => {
+                    requests.push({
+                        resolve
+                    });
+                };
+                
+                return result;
+            };
+            
+            attributeChangedCallback(name, oldValue, newValue) {
+                if (name === PROP_ANIMATIONS_JSON &&
+                    oldValue != null) {
+                
+                    const characterReadyAction = () => {
+                        const localAttributeChangedCallbackTimerId = this.attributeChangedCallbackTimerId;
+
+                        if (localAttributeChangedCallbackTimerId != null) {
+                            delete this.attributeChangedCallbackTimerId;
+                            window.clearTimeout(localAttributeChangedCallbackTimerId);
+                        }
+
+                        // Ignore grouped undo/redo that involves multiple updating of animations_json attribute value.
+                        const delay = 50;
+                        
+                        this.attributeChangedCallbackTimerId = window.setTimeout(() => {
+                            delete this.attributeChangedCallbackTimerId;
+
+                            this.checkWaitForLoadedFromChangedAnimationsJson().then(() => {
+                                if (this.character == null) {
+                                    return;
+                                }
+                              
+                                
+                                
+                                this.clearTimeline();
+                                this.clearActions();
+                                
+                                this.destroyCharacter();
+                                delete this.character;
+                                
+                                this.actions = this.getActionsPropertyValue();
+                                this.postSetActionsAction();
+                                
+                                this.beginLoadFromChangedAnimationsJson();
+                                
+                                const workingWindow = getWorkingWindow();
+                                const localCharacter3dController = workingWindow.character3dController;
+
+                                localCharacter3dController.fromElement(this).then((elementCharacter3dController) => {
+                                    const characterAssetId = this.getCharacterAssetId();
+                                    const characterFamilyName = this.getCharacterFamilyName();
+                                    
+                                    const texture = this.getTexture();
+                                    
+                                    const flipH = this.getFlipH();
+                                    const flipV = this.getFlipV();
+                                    
+                                    return elementCharacter3dController.loadCharacter(characterAssetId, characterFamilyName, flipH, flipV, texture, this);
+                                }).then((characterParameter) => {
+                                    this.character = characterParameter;
+
+                                    return this.characterLoaded();
+                                }).then(() => {
+                                    return this.loadAllBlendActions();
+                                }).then(() => {
+                                    return this.buildTimelineForActions();
+                                }).then(() => {
+                                    return this.setVisibleAsPromise(true);
+                                }).then(() => {                                    
+                                    this.synchronizeCharacterBounds();
+
+                                    this.setCharacterApi(this.api);                                
+
+                                    this.fireCharacterReloaded();
+                                }).catch((errorMessage) => {
+                                    console.error(errorMessage);
+                                }).finally(() => {
+                                    this.endLoadFromChangedAnimationsJson();
+                                });                    
+                            }).catch((errorMessage) => {
+                                console.error(errorMessage);
+                            });
+                        }, delay);
+                    };
+                
+                    this.checkWaitForCharacterReady().then(() => {
+                        characterReadyAction();
+                    }).catch((errorMessage) => {
+                        console.error(errorMessage);
+                    });
+                }
+            }
+            
+            
+            calculateNormalizedActions() {
+                let result = [
+                ];
+                
+                const addActionToResult = (action) => {
+                    result.push(action);
+                };
+                
+                this.iterateActions((eachAction) => {
+                    const playCount = eachAction.playCount;
+                    
+                    if (playCount === 1) {
+                        if (eachAction.endRatio < 1) {
+                            const normalizedAction = cloneActionObject(eachAction);
+
+                            normalizedAction.pauseWhenEnd = true;
+                            
+                            addActionToResult(normalizedAction);
+                        } else {
+                            addActionToResult(eachAction);
+                        }
+                        
+                        return;
+                    }
+                    
+                    
+                    if (playCount < 1) {
+                        const duration = getActionActualDuration(eachAction);
+                        
+                        const normalizedAction = cloneActionObject(eachAction);
+                        
+                        normalizedAction.playCount = 1;
+                        normalizedAction.duration = duration * playCount;
+                        
+                        normalizedAction.startRatio = 0;
+                        normalizedAction.endRatio = 1;
+                        
+                        normalizedAction.pauseWhenEnd = true;
+                        
+                        addActionToResult(normalizedAction);
+                        
+                        return;
+                    }
+
+                    
+                    
+                    
+                    addActionToResult(eachAction);
+                    
+                    let remainingPlayCount = playCount - 1;
+
+                    const startTime = eachAction.startTime;
+                    const duration = getActionActualDuration(eachAction);
+
+                    const endTime = startTime + duration;
+
+                    let normalizedActionStartTime = endTime;
+
+                    const handleEachRepeatAction = () => {
+                        const normalizedAction = cloneActionObject(eachAction);
+
+                        normalizedAction.playCount = 1;
+                        normalizedAction.startTime = normalizedActionStartTime;
+
+                        normalizedAction.repeatForAction = eachAction;
+
+                        if (remainingPlayCount < 1) {
+                            normalizedAction.duration = duration * remainingPlayCount;
+                            normalizedAction.pauseWhenEnd = true;
+                            
+                            normalizedAction.startRatio = 0; // (#105012)
+                            normalizedAction.endRatio = 1;
+                        } else {
+                            normalizedActionStartTime += duration;
+                        }
+
+                        addActionToResult(normalizedAction);
+
+                        remainingPlayCount -= 1;
+                    };
+
+                    while (remainingPlayCount > 0) {
+                        handleEachRepeatAction();
+                    }
+                });
+                
+                return result;
+            }
+            
+            playTimeline() {
+                this.timeline.play();
+            }
+
+            pauseTimeline() {
+                this.timeline.pause();
+            }
+
+
+            playing = false;
+
+            isPlaying() {
+                return this.playing;
+            }
+
+            play() {
+                this.playing = true;
+                
+                return new Promise((resolve, reject) => {
+                    this.playTimeline();
+
+                    const localCurrentActionObject = this.currentActionObject;
+
+                    if (localCurrentActionObject != null) {
+                        localCurrentActionObject.play().then(() => {
+                            resolve();
+                        }).catch((errorMessage) => {
+                            reject(errorMessage);
+                        });
+                    } else {
+                        resolve();
+                    }
+                });
+            }
+
+            pause() {
+                this.playing = false;
+
+                return new Promise((resolve, reject) => {
+                    this.pauseTimeline();
+
+                    const localCurrentActionObject = this.currentActionObject;
+
+                    if (localCurrentActionObject != null) {
+                        localCurrentActionObject.pause().then(() => {
+                            resolve();
+                        }).catch((errorMessage) => {
+                            reject(errorMessage);
+                        });
+                    } else {
+                        resolve();                
+                    }
+                });
+            }
+            
+            getTimelineChildren() {
+                return this.timeline.getChildren();
+            }
+            
+            iterateTimelineChildren(delegate) {
+                this.getTimelineChildren().forEach((eachChild) => {
+                    delegate(eachChild);
+                });
+            }
+            
+            triggerTimelineChildrenForceExitForTimeAheadOfCharacter() {
+                this.iterateTimelineChildren((eachChild) => {
+                    if (typeof(eachChild.forceExitForTimeAheadOfCharacter) === 'function') {
+                        eachChild.forceExitForTimeAheadOfCharacter();
+                    }
+                });
+            }
+
+            seekTimeline(time, suppressEvents, timeRelativeToCharacter) {
+                this.timeline.seek(time, suppressEvents);                
+                
+                if (timeRelativeToCharacter < time &&
+                        
+                    // Skip case where two numbers are only diff by very small value.
+                    time - timeRelativeToCharacter > 0.0001) {
+                        
+                    this.triggerTimelineChildrenForceExitForTimeAheadOfCharacter();
+                }
+            }
+
+            findNormalizedAction(delegate) {
+                return this.normalizedActions.find(delegate);
+            };
+
+            findNormalizedActionForTime(time) {
+                const forcedNormalizedActionForTime = this.findForcedNormalizedActionForTime(time);
+                
+                if (forcedNormalizedActionForTime != null) {
+                    return forcedNormalizedActionForTime;
+                }
+
+                
+                
+                const actionCount = this.getActionCount();
+                
+                let result = this.findNormalizedAction((eachAction, indexOfEachAction) => {
+                    if (this.isActionEnabled(eachAction) === false) {
+                        return false;
+                    }
+                    
+                    
+                        
+                        
+                        
+                    const startTime = eachAction.startTime;
+                    const duration = getActionActualDuration(eachAction);
+
+                    const endTime = startTime + duration;
+                    
+                    const isLastAction = indexOfEachAction === actionCount - 1;
+                    
+                    if (isLastAction) {
+                        return time >= startTime && 
+                               time <= endTime;
+                    }
+                    
+                    
+
+                    return time >= startTime && 
+                           time < endTime;
+                });
+                
+                
+                
+                if (result != null &&
+                    this.isPlaying() === false) {
+                
+                    const endBlendAction = result.endBlendAction;
+                    
+                    if (endBlendAction != null &&
+                        time >= endBlendAction.startTime) {
+                    
+                        result = endBlendAction;
+                    }
+                }
+                
+                if (result != null &&
+                    this.isPlaying()) {
+                
+                    const nextActionForBlend = result.nextActionForBlend;
+                    
+                    if (nextActionForBlend != null &&
+                        time >= nextActionForBlend.startTime) {
+                    
+                        result = nextActionForBlend;
+                    }
+                }
+                
+                return result;
+            }
+            
+            findForcedNormalizedActionForTime(time) {
+                return this.character.findForcedNormalizedActionForTime(this.normalizedActions, time);
+            }
+            
+            isActionEnabled(action) {
+                return this.character.isActionEnabled(action);
+            }
+
+            pauseCurrentActionObject() {
+                return this.currentActionObject.pause();
+            }
+
+            hasCurrentActionObject() {
+                return this.currentActionObject != null;
+            }
+
+
+            clearCurrentAction() {
+                delete this.currentAction;
+            }
+            
+            clearCurrentActionObject() {
+                delete this.currentActionObject;
+            }
+
+
+            seekWithoutSeekTimeline(time, preferredSeekToAction) {
+                const shouldSeekTimeline = false;
+
+                return this.seek(time, shouldSeekTimeline, preferredSeekToAction);
+            }
+
+            hasCurrentAction() {
+                return this.currentAction != null;
+            }
+
+
+            getCurrentActionId() {
+                return this.currentAction.id;
+            }
+
+            getCurrentActionStartTime() {
+                return this.currentAction.startTime;
+            }
+
+
+
+            getActionObjectForCurrentActionId() {
+                const currentActionId = this.getCurrentActionId();
+
+                return this.getActionObject(currentActionId);
+            };
+
+
+            seekCurrentActionObject(time) {
+                return this.currentActionObject.seek(time);
+            }
+
+            playCurrentActionObject() {
+                return this.currentActionObject.play();
+            }
+
+            findClosestPreviousAction(time) {
+                let result = null;
+
+                // Todo: should iterate normalized actions instead?
+                this.everyAction((eachAction) => {
+                    let proceed = true;
+
+                    const actionEndTime = eachAction.startTime + getActionActualDurationConsiderIncompleteAction(eachAction);
+
+                    // Because consider action time use < end time, so find out of range action use >= end time seems make sense.
+                    if (time >= actionEndTime) {
+                        result = eachAction;
+                    } else {
+                        proceed = false;
+                    }
+
+                    return proceed;
+                });
+
+                return result;
+            }
+
+            setActionObjectSought(actionObject) {
+                this.actionObjectSought = actionObject;
+            }
+
+            setActionObjectSoughtAsCurrentActionObject() {
+                this.setActionObjectSought(this.currentActionObject);
+            }
+            
+            
+            initForSeekCapture() {
+                const animationsJsonAttributeValue = this.getAnimationsJsonAttributeValue();
+                
+                const representativeString = animationsJsonAttributeValue;
+                const timelineDuration = this.getTimelineDuration();
+                
+                this.character.initForSeekCapture(representativeString, timelineDuration);
+            }
+            
+            
+            seekAnimateFaceMorphsHandler(time) {
+                this.character.seekAnimateFaceMorphsHandler(time);
+            }
+
+            seek(
+                time, 
+                shouldSeekTimeline = true,
+                preferredSeekToAction,
+                timeRelativeToCharacter,
+                shouldUpdateLastSeekTime = true
+            ) {
+                if (shouldUpdateLastSeekTime) {
+                    this.lastSeekTime = time;
+                }
+                
+                return new Promise((resolve, reject) => {
+                    this.checkWaitForLoadedFromChangedAnimationsJson().then(() => {
+                        if (this.alreadyDestroyed ||
+                            this.character == null) {
+                        
+                            // Use resolve not reject to avoid it looks like an error in console.
+                            resolve();
+                            
+                            return;
+                        }
+                        
+                        
+                        
+                        
+                        const oldActionObjectSought = this.actionObjectSought;
+                        delete this.actionObjectSought;
+
+                        const seekClosestPreviousActionObjectToItsDuration = () => {
+                            const closestPreviousAction = this.findClosestPreviousAction(time);
+                            
+                            if (closestPreviousAction != null) {
+                                const actionId = closestPreviousAction.id;
+                                const actionDuration = getActionDurationWithPlayCount(closestPreviousAction);
+                                
+                                const actionObjectOfClosestPreviousAction = this.getActionObject(actionId);
+                                
+                                if (actionObjectOfClosestPreviousAction == null) {
+                                    return;
+                                }
+                                
+                                
+                                
+                                this.setActionObjectSought(actionObjectOfClosestPreviousAction);
+                                
+                                actionObjectOfClosestPreviousAction.seek(actionDuration).then(() => {
+                                    resolve();
+                                }).catch((errorMessage) => {
+                                    reject(errorMessage);
+                                });
+                            } else {
+                                resolve();
+                            }
+                        }
+
+
+                        const newAction = (() => {
+                            const normalizedActionForTime = this.findNormalizedActionForTime(time);
+                            
+
+                            if (preferredSeekToAction == null) {
+                                return normalizedActionForTime;
+                            }
+                            
+                            
+                            if (normalizedActionForTime === preferredSeekToAction) {
+                                return normalizedActionForTime;
+                            }
+                            
+                            
+                            if (normalizedActionForTime != null &&
+                                normalizedActionForTime.isBlendAction) {
+                            
+                                if (normalizedActionForTime.previousAction === preferredSeekToAction ||
+                                    normalizedActionForTime.currentAction === preferredSeekToAction) {
+                                
+                                    return normalizedActionForTime;
+                                }
+                            }
+                            
+                            
+                            return preferredSeekToAction;
+                        })();
+                        
+                        const currentActionChanged = async () => {
+                            if (this.hasCurrentActionObject()) {
+                                if (this.isPlaying()) {
+                                    await this.pauseCurrentActionObject();
+                                }
+
+                                this.clearCurrentActionObject();
+                            }
+
+                            const handleHasCurrentAction = () => {
+                                this.currentActionObject = this.getActionObjectForCurrentActionId();
+                                
+                                if (this.currentActionObject == null) {
+                                    return;
+                                }
+                                
+                                
+
+                                const startTime = this.getCurrentActionStartTime();
+                                const timeRelativeToAction = time - startTime;
+
+                                const handleSeekCurrentActionObjectDone = () => {
+                                    let nextPromise = null;
+
+                                    if (this.isPlaying()) {
+                                        nextPromise = this.playCurrentActionObject();
+                                    } else {
+                                        nextPromise = Promise.resolve();
+                                    }
+
+                                    return nextPromise;
+                                };
+
+                                this.setActionObjectSoughtAsCurrentActionObject();
+
+                                this.seekCurrentActionObject(timeRelativeToAction).then(() => {
+                                    return handleSeekCurrentActionObjectDone();
+                                }).then(() => {
+                                    resolve();
+                                }).catch((errorMessage) => {
+                                    reject(errorMessage);
+                                });
+                            };
+
+                            if (this.hasCurrentAction()) {
+                                handleHasCurrentAction();
+                            } else if (this.isPlaying() === false) {
+                                seekClosestPreviousActionObjectToItsDuration();
+                            }
+                        };
+
+                        const currentActionNotChangedAndHasCurrentActionObject = () => {
+                            const startTime = this.currentAction.startTime;
+                            const timeRelativeToAction = time - startTime;
+
+                            this.setActionObjectSoughtAsCurrentActionObject();
+
+                            this.seekCurrentActionObject(timeRelativeToAction).then(() => {
+                                resolve();
+                            }).catch((errorMessage) => {
+                                reject(errorMessage);
+                            });
+                        };
+                        
+                        if (newAction != this.currentAction) {
+                            this.currentAction = newAction;
+
+                            currentActionChanged();
+                        } else if (this.hasCurrentActionObject()) {
+                            currentActionNotChangedAndHasCurrentActionObject();
+                        } else if (this.isPlaying() === false) {
+                            seekClosestPreviousActionObjectToItsDuration();
+                        }
+
+                        // (#108001) lets seekTimeline() after currentActionChanged()
+                        if (shouldSeekTimeline) {
+                            const suppressEvents = false;
+                            
+                            this.seekTimeline(time, suppressEvents, timeRelativeToCharacter);                
+                        }
+
+                        if (oldActionObjectSought != null &&
+                            this.actionObjectSought == null &&
+                            this.isPlaying() === false) {
+
+                            oldActionObjectSought.reset();
+                        }
+                        
+
+                        // Let animation group seek first, then overwrite the 
+                        // influences of the morph targets.
+                        this.seekAnimateFaceMorphsHandler(time);
+                    }).catch((errorMessage) => {
+                        reject(errorMessage);
+                    });
+                });
+            }
+
+            idActionObjectMap = (() => {
+                const result = {
+                };
+
+                const map = new Map();
+
+                result.set = (actionId, actionObject) => {
+                    map.set(actionId, actionObject);
+                };
+
+                result.get = (actionId) => {
+                    return map.get(actionId);
+                };
+
+                result.delete = (actionId) => {
+                    map.delete(actionId);
+                };
+                
+                return result;
+            })();
+
+            
+            getActionObject(actionId) {
+                return this.idActionObjectMap.get(actionId);
+            }
+
+            setToIdActionObjectMap(actionId, actionObject) {
+                this.idActionObjectMap.set(actionId, actionObject);
+            }
+
+            deleteFromIdActionObjectMap(actionId) {
+                this.idActionObjectMap.delete(actionId);
+            }
+            
+            
+            addBlendActionId(blendActionId) {
+                this.allBlendActionIds.add(blendActionId);
+            }
+            
+            iterateBlendActionIds(delegate) {
+                this.allBlendActionIds.iterate(delegate);
+            }            
+            
+            clearBlendActionIds() {
+                this.allBlendActionIds.clear();
+            }
+            
+
+            actionLoaded(actionId, actionObject) {
+                this.setToIdActionObjectMap(actionId, actionObject);
+            }
+
+            getDuration() {
+                return 10;
+            }
+
+            createTimeline() {
+                return gsap.timeline({
+                    paused: true
+                });
+            }
+            
+            getAnimationsJsonAttributeValue() {
+                return this.getAttribute(PROP_ANIMATIONS_JSON);
+            }
+
+            getResourceBaseUrlAttributeValue() {
+                return this.getAttribute(PROP_RESOURCE_BASE_URL);
+            }
+
+            getAnimationsJsonObject() { 
+                const animationsJsonAttributeValue = this.getAnimationsJsonAttributeValue();
+                
+                const localCachedAnimationJsonObject = this.cachedAnimationsJsonObject;
+                
+                if (localCachedAnimationJsonObject != null) {
+                    if (localCachedAnimationJsonObject.isValid(animationsJsonAttributeValue) === false) {
+                        localCachedAnimationJsonObject.dispose();
+                        
+                        delete this.cachedAnimationsJsonObject;
+                    } else {
+                        return localCachedAnimationJsonObject.getValue();
+                    }
+                }
+                
+                
+                const jsonObject = JSON.parse(animationsJsonAttributeValue);
+                
+                this.cachedAnimationsJsonObject = (() => {
+                    const cachedValue = {
+                    };
+                    
+                    cachedValue.isValid = (newAnimationsJsonAttributeValue) => {
+                        return newAnimationsJsonAttributeValue === animationsJsonAttributeValue;
+                    };
+                    
+                    cachedValue.dispose = () => {
+                        // Do nothing.
+                    };
+                    
+                    cachedValue.getValue = () => {
+                        return jsonObject;
+                    };
+                    
+                    return cachedValue;
+                })();
+                
+                return jsonObject;
+            }
+
+
+            addMouseDownListener(mouseDownListener) {
+                this.addEventListener('mousedown', mouseDownListener);
+            }
+            
+            removeMouseDownListener(mouseDownListener) {
+                this.removeEventListener('mousedown', mouseDownListener);
+            }
+            
+
+            useStyleAction(delegate) {
+                const localStyle = this.style;
+
+                return delegate(localStyle);
+            }
+
+            mapActions(delegate) {
+                return this.actions.map(delegate);
+            }
+
+            destroyCharacter() {
+                this.character.destroy(this.destroyForSwitchActiveView);
+            }
+            
+            
+            
+            
+            alreadyDestroyed = false;
+            
+            destroyForInlineEdit() {
+                this.destroy();
+            }
+            
+            destroy(forSwitchActiveView = false) {
+                if (this.alreadyDestroyed) {
+                    return;
+                }
+                
+                this.alreadyDestroyed = true;
+                this.destroyForSwitchActiveView = forSwitchActiveView;
+                
+                this.checkWaitForCharacterReady().then(() => {
+                    if (this.positionAnimationSession != null) {
+                        this.disposePositionAnimationSession();
+                    }
+
+                    this.clearHeadOrientationRegister()
+                    this.clearTimeline();
+                    this.killTimeline();
+
+                    const audioUrls = null;
+                    this.disposeNonUsingSounds(audioUrls);
+
+
+                    this.clearActions();
+
+                    if (this.loadedCharacter) {
+                        this.destroyCharacter();
+                        delete this.character;
+                    }
+
+
+                    delete this.api;
+                }).catch((errorMessage) => {
+                    console.error(errorMessage);
+                });                
+            }
+            
+            
+            
+            
+            
+            
+            getActionCount() {
+                return this.actions.length;
+            }
+            
+            getActionAt(index) {
+                return this.actions[index];
+            }
+            
+            
+            characterLoaded() {
+                const self = this;
+                
+                return new Promise((resolve, reject) => {
+                    const actionCount = self.getActionCount();
+                    
+                    const originalActions = self.actions;
+                    
+                    let nextActionIndex = 0;
+                    
+                    const performHandleNextActionIndex = () => {
+                        return new Promise((resolve, reject) => {
+                            if (self.actions !== originalActions) {
+                                reject();
+                                
+                                return;
+                            }
+                            
+                            
+                            
+                            const eachAction = self.getActionAt(nextActionIndex);
+                            
+                            const workingWindow = getWorkingWindow();
+                            const localCharacter3dController = workingWindow.character3dController;
+                            const actionId = eachAction.id;
+                            const assetPath = eachAction.assetPath;
+                            
+                            localCharacter3dController.fromElement(this).then((elementCharacter3dController) => {
+                                if (self.actions !== originalActions) {
+                                    reject();
+
+                                    return;
+                                }
+                                
+                                
+                                
+                                return this.loadAction(elementCharacter3dController, eachAction);
+                            }).then((actionObject) => {
+                                this.actionLoaded(actionId, actionObject);
+
+                                resolve();
+                            }).catch((errorMessage) => {
+                                reject(errorMessage);
+                            });
+                        });
+                    };
+                    
+                    const handleNextActionIndex = () => {
+                        if (nextActionIndex === actionCount) {
+                            resolve();
+                            
+                            return;
+                        }
+                        
+                        
+                        performHandleNextActionIndex().then(() => {
+                            nextActionIndex++;
+                            
+                            handleNextActionIndex();
+                        }).catch((errorMessage) => {
+                            console.error(errorMessage);
+                            
+                            
+                            nextActionIndex++;
+                            
+                            handleNextActionIndex();
+                        });
+                    };
+                    
+                    handleNextActionIndex();
+                });
+            }
+            
+            
+            createSoundsRepository() {
+                const result = {
+                };
+                
+                const map = new Map();
+                
+                const calculateKey = (audioUrl, audioInfos) => {
+                    let key = audioUrl;
+                    if (audioInfos.characterFamilyName != null) {
+                        key += '\n' + audioInfos.characterFamilyName;
+                    }
+                    if (audioInfos.blendShapes != null) {
+                        key += '\n' + 'blendShapes';
+                    }
+                    if (audioInfos.spectrum != null) {
+                        key += '\n' + 'spectrum';
+                    }
+                    key += '\n' + (audioInfos.trimmedStartTime || 0);
+                    key += '\n' + (audioInfos.trimmedEndTime || 0);
+                    key += '\n' + audioInfos.duration;
+                    return key;
+                };
+                
+                result.getSound = (audioUrl, audioInfos) => {
+                    const key = calculateKey(audioUrl, audioInfos);
+                    return map.get(key);
+                };
+                
+                result.addSound = (audioUrl, sound, audioInfos) => {
+                    const key = calculateKey(audioUrl, audioInfos);
+                    map.set(key, sound);
+                };
+                
+                result.disposeNonUsingSounds = (audioUrlsAndInfos) => {
+                    const audioUrlsAsMap = (() => {
+                        const mapResult = {
+                        };
+                        
+                        const internalMap = new Map();
+                        const EXISTS_VALUE = true;
+                        
+                        if (audioUrlsAndInfos != null && audioUrlsAndInfos.length > 0) {
+                            audioUrlsAndInfos.forEach((eachAudioUrlAndInfos) => {
+                                const {
+                                    id,
+                                    audioId,
+                                    pageAnimationAudioId,
+
+                                    startTime,
+                                    duration,
+                                    name,
+                                    trimmedStartTime,
+                                    trimmedEndTime,
+                                    volume,
+
+                                    audioUrl,
+                                    audioDuration,
+
+                                    characterFamilyName,
+                                    text,
+                                    voiceModel,
+                                    blendShapes,
+                                    spectrum
+                                } = eachAudioUrlAndInfos;
+                                const audioInfos = {
+                                    id,
+                                    audioId,
+                                    pageAnimationAudioId,
+
+                                    startTime,
+                                    duration,
+                                    name,
+                                    trimmedStartTime,
+                                    trimmedEndTime,
+                                    volume,
+
+                                    audioUrl,
+                                    audioDuration,
+
+                                    characterFamilyName,
+                                    text,
+                                    voiceModel,
+                                    blendShapes,
+                                    spectrum
+                                };
+                                const key = calculateKey(audioUrl, audioInfos);
+                                internalMap.set(key, EXISTS_VALUE);
+                            });
+                        }
+                        
+                        mapResult.exists = (key) => {
+                            return internalMap.get(key) === EXISTS_VALUE;
+                        };
+                        
+                        return mapResult;
+                    })();
+                    
+                    map.forEach((sound, key) => {
+                        if (audioUrlsAsMap.exists(key) === false) {
+                            map.delete(key);
+                            
+                            sound.dispose();
+                        }
+                    });
+                };
+                
+                return result;
+            }
+            
+            createPointerEventDetectionElement() {
+                const result = document.createElement('div');
+                
+                result.className = 'character-3d-pointer-event-detection-element';
+                
+                const updateStyle = (style) => {
+                    style.position = 'absolute';
+                    style.pointerEvents = 'all'; 
+                    
+                    style.left = '0px'; 
+                    style.top = '0px'; 
+                    style.width = '100%'; 
+                    style.height = '100%'; 
+                    
+//                    style.background = 'rgba(0, 0, 255, 0.5)';
+                };
+                
+                updateStyle(result.style);
+                
+                result.setBounds = function(x, y, width, height) {
+                    const selfStyle = this.style;
+                    
+                    selfStyle.left = `${x}px`;
+                    selfStyle.top = `${y}px`;
+                    selfStyle.width = `${width}px`;
+                    selfStyle.height = `${height}px`;
+                };
+                
+                return result;
+            }
+
+            constructor() {
+                super();
+                
+                this.allBlendActionIds = this.createAllBlendActionIds();
+                
+                this.soundsRepository = this.createSoundsRepository();
+                
+                
+                this.setInitialImageAsPreview();
+                
+                
+                this.useStyleAction((styleParameter) => {
+                    styleParameter.position = 'absolute';
+                    styleParameter.pointerEvents = 'none';
+                    
+//                    styleParameter.background = 'rgba(255, 0, 0, 0.5)';
+                });
+                
+                
+                this.pointerEventDetectionElement = this.createPointerEventDetectionElement();
+                this.appendChild(this.pointerEventDetectionElement);
+                
+                const workingWindow = getWorkingWindow();
+                this.loadedCharacter = !workingWindow['NO_UI'] && !this.closest('div[embed="true"]');
+                if (this.loadedCharacter) {
+                    new Promise((resolve, reject) => {
+                        if (workingWindow.ensureCharacter3dController != null) {
+                            resolve();
+                            
+                            return;
+                        }
+                        
+                        
+                        
+                        const checkReady = () => {
+                            if (workingWindow.ensureCharacter3dController == null) {
+                                setTimeout(checkReady, 200);
+                                return;
+                            }
+                            
+                            
+                            resolve();
+                        };
+                        setTimeout(checkReady, 200);
+                    }).then(() => {
+                        return workingWindow.ensureCharacter3dController();
+                    }).then(() => {
+                        this.timeline = this.createTimeline();
+
+                        this.loadFromAnimationsJsonObject();
+                    }).catch((errorMessage) => {
+                        console.error(errorMessage);
+                    });
+                }
+            }
+            
+            
+            setInitialImageAsPreview() {
+                const initialImage = this.getInitialImage();
+                
+                if (initialImage != null) {
+                    this.insertAdjacentHTML('beforeend', `<div class="${CHARACTER_3D_PREVIEW_CLASS_NAME}" style='width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; background-image: url("${initialImage}");'>`);
+                }
+            }
+            
+            createAllBlendActionIds() {
+                const result = {
+                };
+                
+                let array = [
+                ];
+                
+                result.add = (eachBlendActionId) => {
+                    array.push(eachBlendActionId);
+                };
+                
+                result.iterate = (delegate) => {
+                    if (array.length > 0) {
+                        array.forEach((eachBlendActionId) => {
+                            delegate(eachBlendActionId);
+                        });
+                    }
+                };
+                
+                result.clear = () => {
+                    array = [
+                    ];
+                };
+                
+                return result;
+            }
+            
+            hidePreview() {
+                const previewElement = this.querySelector(`.${CHARACTER_3D_PREVIEW_CLASS_NAME}`);
+                
+                if (previewElement != null) {
+                    previewElement.remove();
+                }
+            }
+
+            sortActionsByStartTime() {
+                this.actions.sort((actionOne, actionTwo) => {
+                    return actionOne.startTime - actionTwo.startTime;
+                });
+            }
+
+            everyAction(delegate) {
+                this.actions.every((eachAction) => {
+                    return delegate(eachAction);
+                });
+            }
+
+            findAction(delegate) {
+                return this.actions.find((eachAction) => {
+                    return delegate(eachAction);
+                });
+            }
+
+            findActionById(actionId) {
+                return this.findAction((eachAction) => {
+                    return eachAction.id === actionId;
+                });
+            }
+
+            getNormalizedActionAt(index) {
+                return this.normalizedActions[index];
+            }
+            
+            iterateNormalizedActions(delegate) {
+                this.normalizedActions.forEach((eachAction) => {
+                    delegate(eachAction);
+                });
+            }
+            
+            iterateActions(delegate) {
+                this.actions.forEach((eachAction, indexOfEachAction, allActions) => {
+                    delegate(eachAction, indexOfEachAction, allActions);
+                });
+            }
+
+            timelineTo(targets, properties, startTime) {
+                this.timeline.to(targets, properties, startTime);
+            }
+
+            timelineCall(callback, time) {
+                const parameters = null;
+
+                this.timeline.call(callback, parameters, time);
+            }
+            
+            
+            disposePositionAnimationSession() {
+                this.positionAnimationSession.dispose();
+                delete this.positionAnimationSession;
+            }
+            
+            buildMoveCharacterByActionsTimeline(playheadTime, externalTimeline, positions, zoomRatio) {
+                if (this.positionAnimationSession != null) {
+                    this.disposePositionAnimationSession();
+                }
+
+                const allTweens = [
+                ];
+                
+                const localCharacter = this.character;
+
+                if (positions != null &&
+                    positions.length > 0) {
+
+                    // Ensure bounds up to date because the character position is essential for creating tweens for movement.
+                    this.synchronizeCharacterBounds();
+                    
+                    
+                    
+                    const debounce = (callback, wait) => {
+                        let timeoutId = null;
+                        return (...args) => {
+                            window.clearTimeout(timeoutId);
+                            timeoutId = window.setTimeout(() => {
+                                callback(...args);
+                            }, wait);
+                        };
+                    };
+                    
+                    const ownerForCreatePositionAnimationSession = {
+                        animationUpdated: debounce(() => {
+                            if (this.character == null) {
+                                return;
+                            }
+                            
+                            
+                            
+                            const selfBounds = this.getBoundingClientRect();
+                            
+                            const x = selfBounds.x;
+                            const y = selfBounds.y;
+                            const width = selfBounds.width;
+                            const height = selfBounds.height;
+                            
+                            this.updatePointerEventDetectionElementBounds(x, y, width, height);
+                        }, 200)
+                    };
+
+                    const localPositionAnimationSession = localCharacter.createPositionAnimationSession(externalTimeline, ownerForCreatePositionAnimationSession);
+                    this.positionAnimationSession = localPositionAnimationSession;
+                    
+                    const externalTimelineOnUpdateListenerDelegates = [
+                    ];
+                    
+                    
+                    const fireAllExternalTimelineOnUpdateListenerDelegates = () => {
+                        externalTimelineOnUpdateListenerDelegates.forEach((eachDelegate) => {
+                            eachDelegate();
+                        });
+                    };
+                    
+                    
+                    (() => {
+                        const existingOnUpdateListener = externalTimeline.eventCallback('onUpdate');
+                        
+                        const externalTimelineOnUpdateListener = () => {
+                            if (externalTimelineOnUpdateListener.previousOnUpdateListener != null) {
+                                externalTimelineOnUpdateListener.previousOnUpdateListener();
+                            }
+                            
+                            
+                            fireAllExternalTimelineOnUpdateListenerDelegates();
+                        };
+                        
+
+                        externalTimelineOnUpdateListener.previousOnUpdateListener = existingOnUpdateListener;
+                        
+                        
+                        
+                        externalTimeline.eventCallback('onUpdate', externalTimelineOnUpdateListener);
+                        
+                        
+                        const positionAnimationSessionDispose = localPositionAnimationSession.dispose;
+
+                        localPositionAnimationSession.dispose = function() {
+                            positionAnimationSessionDispose.apply(this, arguments);
+                            
+                            
+                            
+                            
+                            const newExistingOnUpdateListener = externalTimeline.eventCallback('onUpdate');
+                            
+                            if (newExistingOnUpdateListener === externalTimelineOnUpdateListener) {
+                                externalTimeline.eventCallback('onUpdate', externalTimelineOnUpdateListener.previousOnUpdateListener);
+                            } else {
+                                let parentListener = newExistingOnUpdateListener;
+                                let previousOnUpdateListener = parentListener.previousOnUpdateListener;
+
+                                while (previousOnUpdateListener != null) {
+                                    if (previousOnUpdateListener === externalTimelineOnUpdateListener) {
+                                        parentListener.previousOnUpdateListener = externalTimelineOnUpdateListener.previousOnUpdateListener;
+
+                                        break;
+                                    }
+
+
+                                    parentListener = previousOnUpdateListener;
+                                    previousOnUpdateListener = parentListener.previousOnUpdateListener;
+                                }
+                            }
+                        };
+                    })();
+
+                    positions.forEach((eachPosition, eachPositionIndex) => {
+                        const xyDistancesOfPosition = getWebDiagramBabylonJsBridgeUtilFunctions().calculateXYDistancesOfPosition(eachPosition);
+                        
+                        const xDistance = xyDistancesOfPosition.xDistance * zoomRatio;
+                        const yDistance = xyDistancesOfPosition.yDistance * zoomRatio;
+                        
+                        const startTime = eachPosition.startTime;
+                        const duration = eachPosition.duration;
+
+                        const prevPositionIndex = eachPositionIndex - 1;
+                        const prevPosition = positions[prevPositionIndex];
+                        const prevEndTime = prevPosition != null ? prevPosition.startTime + prevPosition.duration : null;
+
+                        const positionAnimation = localPositionAnimationSession.createPositionAnimation(xDistance, yDistance, duration, prevEndTime);
+
+                        const obj = {
+                            progress: 0
+                        };
+                        
+                        const eachTween = gsap.to(obj, {
+                            progress: 1,
+                            duration: duration
+                        });
+
+                        allTweens.push(eachTween);
+
+                        externalTimeline.add(eachTween, startTime);
+                        
+                        const checkUpdatePositionAnimationState = () => {
+                            const time = externalTimeline.time();
+                            
+                            
+                            if (time >= startTime &&
+                                time <= startTime + duration) {
+                            
+                                positionAnimation.progress((() => {
+                                    return (time - startTime) / duration;
+                                })());
+                                
+                                const timelineActive = externalTimeline.isActive();
+                                
+                                if (timelineActive !== positionAnimation.isPlaying()) {
+                                    if (timelineActive) {
+                                        positionAnimation.play();
+                                    } else {
+                                        positionAnimation.pause();
+                                    }
+                                }
+                            } else if (time < startTime) {
+                                positionAnimation.progress(0);
+                            } else {
+                                positionAnimation.progress(1);
+                            }                            
+                        };
+                        
+                        externalTimelineOnUpdateListenerDelegates.push(() => {
+                            checkUpdatePositionAnimationState();
+                        });
+                    });
+                    
+                    // Avoid case when firstMesh.position is using the animating position instead of the original position.
+                    (() => {
+                        const force = true;
+                        
+                        this.synchronizeCharacterBounds(force);
+                    })();
+
+                    localPositionAnimationSession.reset();
+                    
+
+                    fireAllExternalTimelineOnUpdateListenerDelegates();
+                } else {
+                    localCharacter.clearCurrentPositionAnimationSession();
+                }
+            }
+            
+            timelineAddTween(tween, startTime) {
+                this.timeline.add(tween, startTime);
+            }
+            
+            ensureNoCameraTransformAction(action) {
+                if (this.character == null) {
+                    return action();
+                }
+                
+                
+                return this.character.ensureNoCameraTransformAction(action, this);
+            }
+            
+            synchronizeCharacterBounds(
+                forceSetCharacterBounds = false, 
+                forceSynchronizeCharacterBounds = false
+            ) {
+                if (this.isConnected === false) {
+                    return;
+                }
+                
+                
+                
+                const svg = this.closest('svg');
+                if (svg != null && svg.getAttribute('s-c') != null) {
+                    if (forceSynchronizeCharacterBounds === false) {
+                        return;
+                    }
+                }
+                
+                
+                this.ensureNoCameraTransformAction(() => {
+                    const selfBounds = this.getBoundingClientRect();
+                    this.boundsForMoveCharacter = selfBounds;
+
+                    const x = selfBounds.x;
+                    const y = selfBounds.y;
+                    const width = selfBounds.width;
+                    const height = selfBounds.height;
+
+                    this.setCharacterBounds(x, y, width, height, forceSetCharacterBounds);
+                });
+                
+                const event = new CustomEvent('synchronizeCharacterBounds', {
+                    'detail': {
+                        // Currently empty
+                    } 
+                });
+                
+                this.dispatchEvent(event);                
+            }
+            
+            getCharacterBounds() {
+                return this.character.getBounds();
+            }
+            
+            getHipsBoneRotationAngleDifferenceApplied(actionId) {
+                return this.character.getHipsBoneRotationAngleDifferenceApplied(actionId);
+            }
+            
+            getCharacterPointerEventDetectionBounds() {
+                return this.character.getPointerEventDetectionBounds();
+            }
+            
+            updatePointerEventDetectionElementBounds(x, y, width, height) {
+                this.getCharacterPointerEventDetectionBounds().then((characterBounds) => {
+                    const canvasZoneX = characterBounds.canvasZoneX;
+                    const canvasZoneY = characterBounds.canvasZoneY;
+                    
+                    const characterBoundsX = characterBounds.x;
+                    const characterBoundsY = characterBounds.y;
+                    const characterBoundsWidth = characterBounds.width;
+                    const characterBoundsHeight = characterBounds.height;
+
+                    // Assume both width and height use the same scale.
+                    const scale = width / this.offsetWidth;
+                    
+                    const xDifference = characterBoundsX - (x - canvasZoneX);
+                    const yDifference = characterBoundsY - (y - canvasZoneY);
+                    
+                    this.setPointerEventDetectionElementBounds(xDifference / scale, yDifference / scale, characterBoundsWidth / scale, characterBoundsHeight / scale);
+                });
+            }
+            
+            setPointerEventDetectionElementBounds(x, y, width, height) {
+                this.pointerEventDetectionElement.setBounds(x, y, width, height);
+            }
+            
+            setCharacterBounds(x, y, width, height, force = false) {
+                this.character.setBounds(x, y, width, height, force);
+                
+                this.updatePointerEventDetectionElementBounds(x, y, width, height);
+            }
+
+            setCharacterHeadOrientation(orientation, tween, duration, delegate) {
+                const familyName = this.getCharacterFamilyName()
+                this.clearHeadOrientationRegister()
+                const headOrientation = orientation ? orientation : this.headOrientation
+                if (headOrientation === FACE_CAMERA_HEAD_ORIENTATION) {
+                    this.headOrientationRegister = this.character.setHeadFaceCamera(familyName, tween, duration, delegate)
+                } else if (headOrientation === HORIZONTAL_HEAD_ORIENTATION) {
+                    this.headOrientationRegister = this.character.setHeadHorizontal(familyName)
+                } else {
+                    function parseRotationQuaternion(input) {
+                        const regex = /^rotationQuaternion\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)$/;
+                        const match = input.match(regex);
+
+                        if (match) {
+                            return {
+                                x: parseFloat(match[1]),
+                                y: parseFloat(match[2]),
+                                z: parseFloat(match[3]),
+                                w: parseFloat(match[4])
+                            };
+                        }
+                        
+                        
+                        return null;
+                    };
+                    
+                    
+                    
+                    const rotationQuaternionInfo = parseRotationQuaternion(headOrientation);
+                    
+                    if (rotationQuaternionInfo != null) {
+                        this.headOrientationRegister = this.setHeadRotationQuaternion(familyName, tween, duration, delegate, rotationQuaternionInfo);
+                    }
+                }
+            }
+            
+            setHeadRotationQuaternion(familyName, tween, duration, delegate, rotationQuaternionInfo) {
+                return this.character.setHeadRotationQuaternion(familyName, tween, duration, delegate, rotationQuaternionInfo);
+            }
+            
+            clearHeadOrientationRegister() {
+                if (this.headOrientationRegister) {
+                    this.character?.resetHeadOrientation(this.headOrientationRegister)
+                }
+                this.headOrientationRegister = null
+            }
+            
+            
+            disposeSpeechTweens() {
+                const localSpeechTweens = this.speechTweens;
+                
+                if (localSpeechTweens != null) {
+                    delete this.speechTweens;
+                    
+                    localSpeechTweens.forEach((eachSpeechTween) => {
+                        eachSpeechTween.kill();
+                    });
+                }
+            }
+
+            disposeHeadOrientationTweens() {
+                const localHeadOrientationTweens = this.headOrientationTweens;
+                
+                if (localHeadOrientationTweens != null) {
+                    delete this.headOrientationTweens;
+                    
+                    localHeadOrientationTweens.forEach((eachHeadOrientationTween) => {
+                        eachHeadOrientationTween.kill();
+                    });
+                }
+            }
+
+
+            createSound(audioDuration, audioInfos) {
+                return this.character.createSound(audioDuration, audioInfos);
+            }
+            
+            
+            disposeNonUsingSounds(audioUrlsAndInfos) {
+                this.soundsRepository.disposeNonUsingSounds(audioUrlsAndInfos);
+            }
+            
+            getSound(audioUrl, audioInfos) {
+                return this.soundsRepository.getSound(audioUrl, audioInfos);
+            }
+            
+            addSound(audioUrl, sound, audioInfos) {
+                this.soundsRepository.addSound(audioUrl, sound, audioInfos);
+            }
+            
+            
+            buildTimelineForSpeeches(speeches, externalTimeline) {
+                const characterFamilyName = this.getCharacterFamilyName();
+                const allAudioUrlsAndInfos = (() => {
+                    if (speeches != null && speeches.length > 0) {
+                        return speeches.map((eachSpeech) => {
+                            return {
+                                id: eachSpeech.id,
+                                audioId: eachSpeech.audioId,
+                                pageAnimationAudioId: eachSpeech.pageAnimationAudioId,
+
+                                startTime: eachSpeech.startTime,
+                                duration: eachSpeech.duration,
+                                name: eachSpeech.name,
+                                trimmedStartTime: eachSpeech.trimmedStartTime,
+                                trimmedEndTime: eachSpeech.trimmedEndTime,
+                                volume: eachSpeech.volume,
+
+                                audioUrl: eachSpeech.audioUrl,
+                                audioDuration: eachSpeech.audioDuration,
+
+                                characterFamilyName: characterFamilyName,
+                                text: eachSpeech.text,
+                                voiceModel: eachSpeech.voiceModel,
+                                blendShapes: eachSpeech.blendShapes,
+                                spectrum: eachSpeech.spectrum
+                            };
+                        });               
+                    }
+                    return null;
+                })();
+                
+                this.disposeNonUsingSounds(allAudioUrlsAndInfos);
+                
+                
+                
+                this.disposeSpeechTweens();
+                
+                
+                if (speeches == null ||
+                    speeches.length === 0) {
+                
+                    return;
+                }
+                
+                
+                
+                
+                this.speechTweens = [
+                ];
+                
+
+                
+                
+                speeches.forEach((eachSpeech) => {
+                    const {
+                        id,
+                        audioId,
+                        pageAnimationAudioId,
+
+                        startTime,
+                        duration,
+                        name,
+                        trimmedStartTime,
+                        trimmedEndTime,
+                        volume,
+
+                        audioUrl,
+                        audioDuration,
+
+                        characterFamilyName,
+                        text,
+                        voiceModel,
+                        blendShapes,
+                        spectrum
+                    } = eachSpeech;
+                    const audioInfos = {
+                        id,
+                        audioId,
+                        pageAnimationAudioId,
+
+                        startTime,
+                        duration,
+                        name,
+                        trimmedStartTime,
+                        trimmedEndTime,
+                        volume,
+
+                        audioUrl,
+                        audioDuration,
+
+                        characterFamilyName,
+                        text,
+                        voiceModel,
+                        blendShapes,
+                        spectrum
+                    };
+                    
+                    const sound = (() => {
+                        const existingSound = this.getSound(audioUrl, audioInfos);
+                        if (existingSound != null) {
+                            existingSound.pause();
+                            return existingSound;
+                        }
+                        const newSound = this.createSound(audioDuration, audioInfos);
+                        this.addSound(audioUrl, newSound, audioInfos);
+                        return newSound;
+                    })();
+
+                    const isNotExitOnSeekBackward = () => {
+                        return startTime <=0
+                    }
+
+                    const tweenEntered = () => {
+                        const tweenProgressRatio = eachSpeechTween.progress();
+                        const currentAudioTime = duration * tweenProgressRatio;
+                        sound.setActive(tweenProgressRatio < 1);
+                        sound.seek(currentAudioTime).then(() => {
+                            // Done.
+                        }).catch((errorMessage) => {
+                            console.error(errorMessage);
+                        });
+                    };
+
+                    const tweenExited = () => {
+                        sound.setActive(false);
+                    };
+
+                    const eachSpeechTween = createTweenWithEnterAndExitCallback(duration, tweenEntered, tweenExited, isNotExitOnSeekBackward);
+                    
+                    this.addSpeechTween(eachSpeechTween);
+
+                    externalTimeline.add(eachSpeechTween, startTime);
+                });
+            }
+
+            buildHeadOrientationByActionsTimeline(headOrientations, externalTimeline, timelineEndTime, characterStartTime) {
+                this.clearHeadOrientationRegister()
+                delete this.headOrientation;
+
+                this.disposeHeadOrientationTweens();
+                
+                const eliminateFirstHeadOrientationArrayBySecond = (firstHeadOrientationArray, secondHeadOrientationArray) => {
+                    if (firstHeadOrientationArray == null ||
+                        firstHeadOrientationArray.length === 0) {
+                    
+                        return firstHeadOrientationArray;
+                    }
+                    
+                    
+                    if (secondHeadOrientationArray == null ||
+                        secondHeadOrientationArray.length === 0) {
+                    
+                        return firstHeadOrientationArray;
+                    }
+                    
+                    
+                    
+                    let result = [
+                    ];
+                    
+                    firstHeadOrientationArray.forEach((eachFirstHeadOrientation) => {
+                        eachFirstHeadOrientation = cloneObject(eachFirstHeadOrientation);
+
+
+                        let removeFirstHeadOrientation = false;
+
+                        const newHeadOrientations = [
+                        ];
+
+                        secondHeadOrientationArray.forEach((eachSecondHeadOrientation) => {
+                            if (removeFirstHeadOrientation) {
+                                return;
+                            }
+
+
+
+
+
+
+                            let firstHeadOrientationStartTime = eachFirstHeadOrientation.startTime;
+                            let firstHeadOrientationDuration = eachFirstHeadOrientation.duration;
+
+                            let firstHeadOrientationEndTime = firstHeadOrientationStartTime + firstHeadOrientationDuration;
+
+
+
+
+                            const secondHeadOrientationStartTime = eachSecondHeadOrientation.startTime;
+                            const secondHeadOrientationDuration = eachSecondHeadOrientation.duration;
+
+                            const secondHeadOrientationEndTime = secondHeadOrientationStartTime + secondHeadOrientationDuration;
+
+                            if (firstHeadOrientationStartTime >= secondHeadOrientationStartTime &&
+                                firstHeadOrientationEndTime <= secondHeadOrientationEndTime) {
+
+                                // Head orientation bar completely eaten by action bar.
+                                removeFirstHeadOrientation = true;
+                            } else if (secondHeadOrientationStartTime > firstHeadOrientationStartTime &&
+                                       secondHeadOrientationEndTime < firstHeadOrientationEndTime) {
+
+                                // Action bar completely eaten by head orientation bar
+                                // Split the head orientation bar into two bars
+
+                                const endingHeadOrientation = cloneObject(eachFirstHeadOrientation); // ID is the same, assume not a problem since it only exists in memory
+                                const startingHeadOrientation = eachFirstHeadOrientation;                                    
+
+
+                                endingHeadOrientation.startTime = secondHeadOrientationEndTime;
+                                endingHeadOrientation.duration = firstHeadOrientationEndTime - endingHeadOrientation.startTime;
+
+                                firstHeadOrientationEndTime = secondHeadOrientationStartTime;
+                                firstHeadOrientationDuration = firstHeadOrientationEndTime - firstHeadOrientationStartTime;
+
+                                startingHeadOrientation.duration = firstHeadOrientationDuration;
+
+
+                                newHeadOrientations.push(endingHeadOrientation);
+                            } else if (firstHeadOrientationStartTime < secondHeadOrientationStartTime &&
+                                       firstHeadOrientationEndTime <= secondHeadOrientationEndTime) {
+                                   
+                                // End of head orientation bar eaten by action bar.
+                                firstHeadOrientationEndTime = secondHeadOrientationStartTime;
+                                firstHeadOrientationDuration = firstHeadOrientationEndTime - firstHeadOrientationStartTime;
+
+                                eachFirstHeadOrientation.duration = firstHeadOrientationDuration;
+                            } else if (firstHeadOrientationStartTime >= secondHeadOrientationStartTime &&
+                                       firstHeadOrientationStartTime < secondHeadOrientationEndTime &&
+                                       firstHeadOrientationEndTime > secondHeadOrientationEndTime) {
+                                   
+                                // Start of head orientation bar eaten by action bar.
+                                firstHeadOrientationStartTime = secondHeadOrientationEndTime;
+                                firstHeadOrientationDuration = firstHeadOrientationEndTime - firstHeadOrientationStartTime;
+
+                                eachFirstHeadOrientation.startTime = firstHeadOrientationStartTime;
+                                eachFirstHeadOrientation.duration = firstHeadOrientationDuration;
+                            }
+                        });         
+
+                        if (removeFirstHeadOrientation === false) {
+                            result.push(eachFirstHeadOrientation);
+                        }
+
+                        if (newHeadOrientations.length > 0) {
+                            result = result.concat(newHeadOrientations);
+                        }
+                    });
+                    
+                    return result;
+                };
+                
+                const unionFirstHeadOrientationArrayWithSecondWithEliminatation = (firstHeadOrientationArray, secondHeadOrientationArray) => {
+                    firstHeadOrientationArray = eliminateFirstHeadOrientationArrayBySecond(firstHeadOrientationArray, secondHeadOrientationArray);
+                    
+                    if (firstHeadOrientationArray == null) {
+                        firstHeadOrientationArray = [
+                        ];
+                    }
+                    
+                    return firstHeadOrientationArray.concat(secondHeadOrientationArray);
+                };
+                
+                
+                
+                
+                
+                if (headOrientations == null ||
+                    headOrientations.length === 0) {
+                    return;
+                }
+
+                this.headOrientationTweens = [
+                ];
+
+                const angleThreshold = 0.1;
+                const timeThreshold = 0.1;
+                const quaternionStringToArray = (q) => {
+                    let regex = /-?\d+(\.\d+)?/g;
+                    let matches = q.match(regex);
+                    let quaternionArray = matches.map(parseFloat);
+                    return quaternionArray;
+                };
+
+                const compareQuaternionAngles = (q1, q2) => {
+                    const dotProduct = q1.reduce((acc, val, idx) => acc + val * q2[idx], 0);
+                    const angle = 2 * Math.acos(Math.abs(dotProduct));
+                    return angle;
+                };
+
+                const combineItemsWithSameOrientation = (headOrientationArray) => {
+                    const result = [];
+                    const orientationMap = {};
+
+                    headOrientationArray.forEach(itm => {
+                        let key = itm.orientation;
+                        if (key.includes('rotationQuaternion')) {
+                            key = key.substring(0, key.indexOf('('));
+                        };
+
+                        if (orientationMap[key]) {
+                            const lastItm = result[result.length - 1];
+                            
+                            const mergeItems = () => {
+                                var itmEndTime = itm.startTime + itm.duration;
+                                
+                                lastItm.duration = itmEndTime - lastItm.startTime;
+
+                                if (itm.keepApply) {
+                                    lastItm.keepApply = true;
+                                }
+                            };
+                            
+                            if (lastItm.orientation.includes('rotationQuaternion') && itm.orientation.includes('rotationQuaternion')) {
+                                let q1 = quaternionStringToArray(lastItm.orientation);
+                                let q2 = quaternionStringToArray(itm.orientation);
+                                let angle = compareQuaternionAngles(q1, q2);
+
+                                if (angle <= angleThreshold && itm.startTime - (lastItm.startTime + lastItm.duration) <= timeThreshold) {
+                                    mergeItems();
+                                } else {
+                                    result.push(itm);
+                                }
+                            } else {
+                                if (lastItm.orientation === itm.orientation && itm.startTime - (lastItm.startTime + lastItm.duration) <= timeThreshold) {
+                                    mergeItems();
+                                } else {
+                                    result.push(itm);
+                                }
+                            }
+                        } else {
+                            orientationMap[key] = true;
+                            result.push(itm);
+                        }
+                    });
+
+                    return result;
+                };
+                
+                // #111940
+                if (headOrientations != null && headOrientations.length > 0) {
+                    headOrientations = combineItemsWithSameOrientation(headOrientations);
+                };
+                
+                if (headOrientations != null &&
+                    headOrientations.length > 0) {
+                
+                    headOrientations.forEach((eachHeadOrientation, indexOfEachHeadOrientation) => {
+                        const {
+                            startTime,
+                            duration,
+                            orientation
+                        } = eachHeadOrientation;
+                        
+                        const isLastHeadOrientation = indexOfEachHeadOrientation === headOrientations.length - 1;
+
+                        const isStartFromFirstFrame = () => {
+                            return startTime <=0
+                        }
+                        const isEndUntilLastFrame = () => {
+                            const endTime = startTime + duration
+                            return (timelineEndTime || externalTimeline.duration()) - endTime < 1e-6
+                        }
+                        const delegate = {
+                            isNoStartBlending: () => {
+                                return isStartFromFirstFrame()
+                            },
+                            isNoEndBlending: () => {
+                                return isEndUntilLastFrame() || (isLastHeadOrientation && eachHeadOrientation['keepApply']);
+                            }
+                        }
+
+                        const isNotExitOnSeekBackward = () => {
+                            return isStartFromFirstFrame()
+                        }
+
+                        const isNotExitOnComplete = () => {
+                            return isEndUntilLastFrame() || (isLastHeadOrientation && eachHeadOrientation['keepApply']);
+                        }
+
+                        const tweenEntered = (tween) => {
+                            if (this.headOrientation !== orientation) {
+                                this.headOrientation = orientation;
+                                this.setCharacterHeadOrientation(orientation, tween, duration, delegate);
+                            }
+                        };
+                        
+                        const tweenExited = () => {
+                            this.headOrientation = null;
+                            this.clearHeadOrientationRegister();
+                        };
+                        
+                        const eachHeadOrientationTween = createTweenWithEnterAndExitCallback(duration, tweenEntered, tweenExited, isNotExitOnSeekBackward, isNotExitOnComplete);
+
+                        this.addHeadOrientationTween(eachHeadOrientationTween);
+                        
+                        externalTimeline.add(eachHeadOrientationTween, startTime);
+                    })
+                }
+            }
+
+            afterBuildAllTimeline(playheadTime, headOrientations, externalTimeline) {
+                const totalDuration = externalTimeline.duration()
+                const restoreEndHeadOrientation = () => {
+                    const isPlayheadTimeAtTheEnd = totalDuration - playheadTime < 1e-6
+                    if (!isPlayheadTimeAtTheEnd) return
+                    if (headOrientations != null &&
+                        headOrientations.length > 0) {
+                        headOrientations.forEach((eachHeadOrientation) => {
+                            const {
+                                startTime,
+                                duration,
+                                orientation
+                            } = eachHeadOrientation;
+                            const isEndUntilLastFrame = (() => {
+                                const endTime = startTime + duration
+                                return totalDuration - endTime < 1e-6
+                            })()
+                            if (eachHeadOrientation['keepApply'] || isEndUntilLastFrame) {
+                                if (this.headOrientation !== orientation) {
+                                    this.headOrientation = orientation;
+                                    this.setCharacterHeadOrientation(orientation);
+                                }
+                            }
+                        })
+                    }
+                }
+                restoreEndHeadOrientation()
+            }
+            
+            addSpeechTween(eachSpeechTween) {
+                this.speechTweens.push(eachSpeechTween);
+            }
+
+            addHeadOrientationTween(eachHeadOrientationTween) {
+                this.headOrientationTweens.push(eachHeadOrientationTween);
+            }
+            
+            
+            getTimelineTime() {
+                return this.timeline.time();
+            }
+
+            getTimelineDuration() {
+                return this.timeline.duration();
+            }
+            
+            
+            setZIndex(zIndex) {
+                this.character.setZIndex(zIndex);
+            }
+            
+            
+            showPoseEditor(owner, actionId, options) {
+                return this.character.showPoseEditor(owner, actionId, options);
+            }
+            
+            updateWithPoseData(actionId, poseData) {
+                return this.character.updateWithPoseData(actionId, poseData, this.timeline);
+            }
+            
+
+            alignBottomBodyWithPreviousAction(actionDetails, previousActionDetails) {
+                return this.character.alignBottomBodyWithPreviousAction(actionDetails, previousActionDetails);
+            }
+            
+            
+            
+            flattenActionWithRepeatWithPatchData(actionDetails) {
+                return this.character.flattenActionWithRepeatWithPatchData(actionDetails);
+            }
+            
+            
+            getAnimationGroupDeltaForConvertPoseToAction(actionDetails) {
+                return this.character.getAnimationGroupDeltaForConvertPoseToAction(actionDetails);
+            }
+            
+            
+            getPatchedAnimationGroupDataForCustomizations(actionDetails, customizations) {
+                return this.character.getPatchedAnimationGroupDataForCustomizations(actionDetails, customizations);
+            }
+            
+            getPatchedAnimationGroupDataWithDuration(actionDetails, characterFamilyName, dataObjectOfPoseData, previousActionDetails) {
+                return this.character.getPatchedAnimationGroupDataWithDuration(actionDetails, characterFamilyName, dataObjectOfPoseData, previousActionDetails);
+            }
+            
+            mergeAnimationGroups(allActionDetails, metadata) {
+                return this.character.mergeAnimationGroups(allActionDetails, metadata);
+            }
+            
+            mergeAnimationGroupsAndReturnAnimationGroupDeltaAndDuration(allActionDetails) {
+                return this.character.mergeAnimationGroupsAndReturnAnimationGroupDeltaAndDuration(allActionDetails);
+            }
+            
+            
+            loadPoseDataFromAction(absoluteActionAssetPath) {
+                return this.character.loadPoseDataFromAction(absoluteActionAssetPath);
+            }
+            
+            getSceneBlobDataAndDurationForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, inPlace, userAssetFileName, customizations, onlyIncludeTime, patchedAnimationGroupData, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed) {
+                return this.character.getSceneBlobDataAndDurationForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, inPlace, userAssetFileName, customizations, onlyIncludeTime, patchedAnimationGroupData, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed);
+            }
+            
+            generateAnimatedGifForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, userAssetFileName, customizations, patchedAnimationGroupData, gifJsWorkerScriptUrl, onlyIncludeTime, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed, duration) {
+                return this.character.generateAnimatedGifForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, userAssetFileName, customizations, patchedAnimationGroupData, gifJsWorkerScriptUrl, onlyIncludeTime, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed, duration);
+            }
+            
+            generateImage(owner, time) {
+                return this.character.generateImage(owner, time);
+            }
+            
+
+            showAdjustHeadOrientationEditor(rotationQuaternionInfo) {
+                return this.character.showAdjustHeadOrientationEditor(rotationQuaternionInfo);
+            }
+
+            hideAdjustHeadOrientationEditor() {
+                this.character.hideAdjustHeadOrientationEditor();
+            }
+            
+            
+
+            setActionAngle(actionId, angle) {
+                this.character.setActionAngle(actionId, angle);
+            }
+
+            setActionShoulderPosition(actionId, shoulderPosition) {
+                this.character.setActionShoulderPosition(actionId, shoulderPosition);
+            }
+
+            setActionPositionOffset(actionId, horizontal, vertical) {
+                this.character.setActionPositionOffset(actionId, horizontal, vertical);
+            }
+
+            setActionArmSpace(actionId, armSpace) {
+                this.character.setActionArmSpace(actionId, armSpace);
+            }
+            
+            willDestroyForSetWebComponentNode() {
+                if (this.character == null) {
+                    return;
+                }
+                
+                
+                
+                this.character.willDestroyForSetWebComponentNode();
+            }
+
+            getCanChangeTextureMaterialNames() {
+                return this.character.getCanChangeTextureMaterialNames();
+            }
+
+            setMaterialsOutline(materialsOutline) {
+                this.character.setMaterialsOutline(materialsOutline);
+            }
+
+
+            setMaterialImageTextureRotation(materialName, rotation) {
+                this.character.setMaterialImageTextureRotation(materialName, rotation);
+            }
+
+            setMaterialImageTextureScale(materialName, scale) {
+                this.character.setMaterialImageTextureScale(materialName, scale);
+            }
+
+
+            setMaterialColorTexture(materialName, color) {
+                this.character.setMaterialColorTexture(materialName, color);
+            }
+
+
+            previewSubActionTrimmed(actionId, subActionId, startRatio, endRatio) {
+                return this.character.previewSubActionTrimmed(actionId, subActionId, startRatio, endRatio);
+            }
+
+
+            createApi() {
+                const result = {
+                };
+                
+                const selfAsCharacter3d = this;
+                
+                
+                result.updateActionInfoForInheritedPropsChangedToFalse = (actionInfo) => {
+                    if (this.character == null) {
+                        return;
+                    }
+                    
+                    
+                    
+                    const actionObject = selfAsCharacter3d.getActionObject(actionInfo.id);
+                    
+                    if (actionObject == null) {
+                        return;
+                    }
+                    
+                    
+                    
+                    actionObject.updateActionInfoForInheritedPropsChangedToFalse(actionInfo);
+                };
+                
+                result.showLoadingProgress = () => {
+                    if (this.character == null) {
+                        return;
+                    }
+                    
+                    
+                    
+                    this.setVisible(false);
+                    
+                    
+                    
+                    this.setInitialImageAsPreview();
+                };
+                
+                result.previewSubActionTrimmed = (actionId, subActionId, startRatio, endRatio) => {
+                    return selfAsCharacter3d.previewSubActionTrimmed(actionId, subActionId, startRatio, endRatio);
+                };
+            
+                result.setMaterialColorTexture = (materialName, color) => {
+                    selfAsCharacter3d.setMaterialColorTexture(materialName, color);
+                };
+                
+                
+                result.setMaterialsOutline = (materialsOutline) => {
+                    selfAsCharacter3d.setMaterialsOutline(materialsOutline);
+                }
+                
+                result.willDestroyForSetWebComponentNode = () => {
+                    selfAsCharacter3d.willDestroyForSetWebComponentNode();
+                };
+                
+                result.getCanChangeTextureMaterialNames = function() {
+                    return selfAsCharacter3d.getCanChangeTextureMaterialNames();
+                };
+                
+                
+                result.setMaterialImageTextureRotation = function(materialName, rotation) {
+                    selfAsCharacter3d.setMaterialImageTextureRotation(materialName, rotation);
+                };
+                
+                result.setMaterialImageTextureScale = function(materialName, scale) {
+                    selfAsCharacter3d.setMaterialImageTextureScale(materialName, scale);
+                };
+                
+                
+                result.showAdjustHeadOrientationEditor = function(rotationQuaternionInfo) {
+                    return selfAsCharacter3d.showAdjustHeadOrientationEditor(rotationQuaternionInfo);
+                };
+                
+                result.hideAdjustHeadOrientationEditor = function() {
+                    return selfAsCharacter3d.hideAdjustHeadOrientationEditor();
+                };
+                
+                
+                result.setActionAngle = function(actionId, angle) {
+                    selfAsCharacter3d.setActionAngle(actionId, angle);
+                };
+                
+                result.setActionShoulderPosition = function(actionId, shoulderPosition) {
+                    selfAsCharacter3d.setActionShoulderPosition(actionId, shoulderPosition);
+                };
+                
+                result.setActionPositionOffset = function(actionId, horizontal, vertical) {
+                    selfAsCharacter3d.setActionPositionOffset(actionId, horizontal, vertical);
+                };
+                
+                result.setActionArmSpace = function(actionId, armSpace) {
+                    selfAsCharacter3d.setActionArmSpace(actionId, armSpace);
+                };
+                
+                
+                result.loadPoseDataFromAction = function(absoluteActionAssetPath) {
+                    return selfAsCharacter3d.loadPoseDataFromAction(absoluteActionAssetPath);
+                };
+                
+                
+                result.generateAnimatedGifForAction = function(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, userAssetFileName, customizations, patchedAnimationGroupData, gifJsWorkerScriptUrl, onlyIncludeTime, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed, duration) {
+                    return selfAsCharacter3d.generateAnimatedGifForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, userAssetFileName, customizations, patchedAnimationGroupData, gifJsWorkerScriptUrl, onlyIncludeTime, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed, duration);
+                };
+                
+                result.getSceneBlobDataAndDurationForAction = function(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, inPlace, userAssetFileName, customizations, onlyIncludeTime, patchedAnimationGroupData, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed) {
+                    return selfAsCharacter3d.getSceneBlobDataAndDurationForAction(actionAssetType, actionAssetUrl, playCount, repeatBlendDuration, startRatio, endRatio, inPlace, userAssetFileName, customizations, onlyIncludeTime, patchedAnimationGroupData, angle, positionOffset, shoulderPosition, armSpace, flipHorizontally, speed);
+                };
+                
+                result.generateImage = (seekTime) => {
+                    return new Promise((resolve, reject) => {
+                        const owner = (() => {
+                            const ownerResult = {
+                            };
+                            
+                            ownerResult['seekToTimeWithReturnRestoreHandler'] = (time) => {
+                                return new Promise((resolve, reject) => {
+                                    const lastSeekTime = selfAsCharacter3d.lastSeekTime;
+                                    
+                                    
+                                    const seekTimeWithoutUpdateLastSeekTime = (time) => {
+                                        if (selfAsCharacter3d.character == null) {
+                                            reject('selfAsCharacter3d.character is null');
+                                            
+                                            return;
+                                        }
+                                        
+                                        
+                                        
+                                        
+                                        const shouldSeekTimeline = undefined;
+                                        const preferredSeekToAction = undefined;
+                                        const timeRelativeToCharacter = undefined;
+
+                                        const shouldUpdateLastSeekTime = false;
+                                        
+                                        return selfAsCharacter3d.seek(time, shouldSeekTimeline, preferredSeekToAction, timeRelativeToCharacter, shouldUpdateLastSeekTime);
+                                    };
+                                    
+                                    
+                                    
+//                                    console.log('Start seek: ' + time);
+                                    
+                                    seekTimeWithoutUpdateLastSeekTime(time).then(() => {
+                                        resolve({
+                                            restore: () => {
+                                                return new Promise((resolve, reject) => {
+                                                    if (lastSeekTime == null) {
+                                                        resolve();
+                                                        
+                                                        return;
+                                                    }
+                                                    
+                                                    
+                                                    
+//                                                    console.log('Restore seek: ' + lastSeekTime);
+                                                    
+                                                    seekTimeWithoutUpdateLastSeekTime(lastSeekTime).then(() => {
+                                                        resolve();
+                                                    }).catch((errorMessage) => {
+                                                        reject(errorMessage);
+                                                    });
+                                                });
+                                            }
+                                        });
+                                    }).catch((errorMessage) => {
+                                        reject(errorMessage);
+                                    });                                    
+                                });
+                            };
+                            
+                            return ownerResult;
+                        })();
+                        
+                        selfAsCharacter3d.generateImage(owner, seekTime).then((generateImageResult) => {
+                            resolve(generateImageResult);
+                        }).catch((errorMessage) => {
+                            reject(errorMessage);
+                        });
+                    });
+                };
+                
+                result.getCharacterObject = () => {
+                    return selfAsCharacter3d.character;
+                };
+                
+                
+                result.mergeAnimationGroups = (allActionDetails, metadata) => {
+                    return selfAsCharacter3d.mergeAnimationGroups(allActionDetails, metadata);
+                };
+                
+                result.mergeAnimationGroupsAndReturnAnimationGroupDeltaAndDuration = (allActionDetails) => {
+                    return selfAsCharacter3d.mergeAnimationGroupsAndReturnAnimationGroupDeltaAndDuration(allActionDetails);
+                };
+                
+                
+                result.alignBottomBodyWithPreviousAction = (actionDetails, previousActionDetails) => {
+                    return selfAsCharacter3d.alignBottomBodyWithPreviousAction(actionDetails, previousActionDetails);
+                };
+                
+                result.flattenActionWithRepeatWithPatchData = (actionDetails) => {
+                    return selfAsCharacter3d.flattenActionWithRepeatWithPatchData(actionDetails);
+                };
+                
+                result.getAnimationGroupDeltaForConvertPoseToAction = (actionDetails) => {
+                    return selfAsCharacter3d.getAnimationGroupDeltaForConvertPoseToAction(actionDetails);
+                };
+                
+                result.getPatchedAnimationGroupDataForCustomizations = (actionDetails, customizations) => {
+                    return selfAsCharacter3d.getPatchedAnimationGroupDataForCustomizations(actionDetails, customizations);
+                };
+                
+                result.getPatchedAnimationGroupDataWithDuration = (actionDetails, characterFamilyName, dataObjectOfPoseData, previousActionDetails) => {
+                    return selfAsCharacter3d.getPatchedAnimationGroupDataWithDuration(actionDetails, characterFamilyName, dataObjectOfPoseData, previousActionDetails);
+                };
+                
+                result.updateWithPoseData = (actionId, poseData) => {
+                    return selfAsCharacter3d.updateWithPoseData(actionId, poseData);
+                };
+                
+                result.showPoseEditor = (owner, actionId, options) => {
+                    return selfAsCharacter3d.showPoseEditor(owner, actionId, options);
+                };
+                
+                result.setZIndex = (zIndex) => {
+                    selfAsCharacter3d.setZIndex(zIndex);
+                };
+                
+                result.buildTimelineForSpeeches = (speeches, externalTimeline) => {
+                    selfAsCharacter3d.buildTimelineForSpeeches(speeches, externalTimeline);
+                };
+                
+                
+                result.buildMoveCharacterByActionsTimeline = (playheadTime, externalTimeline, positions, zoomRatio) => {
+                    selfAsCharacter3d.buildMoveCharacterByActionsTimeline(playheadTime, externalTimeline, positions, zoomRatio);
+                };
+
+                result.buildHeadOrientationByActionsTimeline = (headOrientations, externalTimeline, timelineEndTime, characterStartTime) =>{
+                    selfAsCharacter3d.buildHeadOrientationByActionsTimeline(headOrientations, externalTimeline, timelineEndTime, characterStartTime);
+                }
+
+                result.afterBuildAllTimeline = (playheadTime, headOrientations, externalTimeline) => {
+                    selfAsCharacter3d.afterBuildAllTimeline(playheadTime, headOrientations, externalTimeline);
+                }
+                
+                result.afterRender = () => {
+                    // Do nothing.
+                };
+                
+                result.synchronizeCharacterBounds  = (forceSetCharacterBounds, forceSynchronizeCharacterBounds) => {
+                    selfAsCharacter3d.synchronizeCharacterBounds(forceSetCharacterBounds, forceSynchronizeCharacterBounds);
+                };
+                
+                result.preparePlay = () => {
+                    return new Promise((resolve, reject) => {
+                        resolve();
+                    });
+                };
+                
+                result.isConnected = () => {
+                    return selfAsCharacter3d.isConnected;
+                };
+                
+                result.getActionObjectById = (id) => {
+                    return selfAsCharacter3d.getActionObject(id);
+                };
+                
+                result.getTimelineDuration = () => {
+                    return selfAsCharacter3d.getTimelineDuration();
+                };
+                
+                result.getDuration = () => {
+                    let result = 0;
+                    
+                    selfAsCharacter3d.iterateActions((eachAction) => {
+                        const startTime = eachAction.startTime;
+
+                        
+                        const duration = (() => {
+                            if (isSingleFrameForAction(eachAction)) {
+                                const repeatDuration = eachAction.repeatDuration;
+
+                                if (repeatDuration != null &&
+                                    repeatDuration > 0) {
+                                
+                                    return repeatDuration;
+                                }
+                            }
+                            
+                            
+
+                            const actionActualDuration = getActionActualDuration(eachAction);
+                            const playCount = eachAction.playCount;
+                            
+                            return actionActualDuration * playCount;
+                        })();
+                        
+                        
+                        
+                        const endTime = startTime + duration;
+                        
+                        if (endTime > result) {
+                            result = endTime;
+                        }
+                    });
+                    
+                    return result;
+                };
+            
+                
+                
+                result.initForSeekCapture = () => {
+                    selfAsCharacter3d['initForSeekCapture']();
+                };
+                
+                
+                result.play = () => {
+                    return new Promise((resolve, reject) => {
+                        selfAsCharacter3d.play();
+                        
+                        resolve();
+                    });
+                };
+                
+                result.playForTimeline = () => {
+                    return this.play();
+                };
+
+                
+                result.pause = () => {
+                    return new Promise((resolve, reject) => {
+                        selfAsCharacter3d.pause();
+                        
+                        resolve();
+                    });
+                };
+                
+                result.pauseForTimeline = () => {
+                    return this.pause();
+                };
+                
+                
+                result.seek = (time, timeRelativeToAction) => {
+                    return new Promise((resolve, reject) => {
+                        const shouldSeekTimeline = undefined;
+                        const preferredSeekToAction = undefined;
+                        
+                        selfAsCharacter3d.seek(time, shouldSeekTimeline, preferredSeekToAction, timeRelativeToAction); 
+                        
+                        resolve();
+                    });
+                };
+                
+                result.seekForTimeline = (time) => {
+                    return this.seek(time);
+                };
+                
+                
+                result.getHipsBoneRotationAngleDifferenceApplied = (actionId) => {
+                    return selfAsCharacter3d.getHipsBoneRotationAngleDifferenceApplied(actionId);
+                };
+                
+                
+                
+                result.getCharacterBounds = () => {
+                    return selfAsCharacter3d.getCharacterBounds();
+                };
+                
+                
+                
+                (function() {
+                    var alreadyDestroyed = false;
+
+
+                    result.destroyForInlineEdit = () => {
+                        result.destroy();
+                    };
+                    
+                    result.destroy = (forSwitchActiveView) => {
+                        if (alreadyDestroyed) {
+                            return;
+                        }
+
+
+                        alreadyDestroyed = true;
+
+                        selfAsCharacter3d.destroy(forSwitchActiveView);
+                    };
+                })();
+                
+                
+                
+                return result;
+            }
+            
+            fireApiReady() {
+                const localApi = this.api;
+                
+                const event = new CustomEvent('apiReady', {
+                    'detail': {
+                        'api': localApi
+                    } 
+                });
+                
+                this.dispatchEvent(event);                
+            }
+            
+            fireCharacterReloaded() {
+                const localApi = this.api;
+                
+                const event = new CustomEvent('characterReloaded', {
+                    'detail': {
+                    } 
+                });
+                
+                this.dispatchEvent(event);                
+            }
+            
+            setVisible(visible) {
+                this.character.setVisible(visible);
+            }
+            
+            setVisibleAsPromise(visible) {
+                return this.character.setVisibleAsPromise(visible);
+            }
+            
+            setCharacterApi(apiParameter) {
+                this.character.api = apiParameter;
+            }
+            
+            loadAllBlendActions() {
+                return new Promise((resolve, reject) => {
+                    const allBlendActions = (() => {
+                        const result = {
+                        };
+                        
+                        const array = [
+                        ];
+                        
+                        result.add = (eachBlendAction) => {
+                            array.push(eachBlendAction);
+                        };
+                        
+                        result.concat = (normalizedActionsParameter) => {
+                            return array.concat(normalizedActionsParameter);
+                        };
+                        
+                        return result;
+                    })();
+                    
+                    const workingWindow = getWorkingWindow();
+                    const localCharacter3dController = workingWindow.character3dController;
+
+                    localCharacter3dController.fromElement(this).then((elementCharacter3dController) => {
+                        const loadActionsPromises = [
+                        ];
+                        
+
+                        let previousAction = null;
+                        this.iterateNormalizedActions((eachAction) => {
+                            if (previousAction != null) {
+                                const repeatForAction = eachAction.repeatForAction;
+                                
+                                let blendDuration = repeatForAction != null ?
+                                                            repeatForAction.repeatBlendDuration:
+                                                            eachAction.blendDuration;
+                                                    
+                                if (blendDuration != null) {
+                                    const startTime = eachAction.startTime;
+                                    blendDuration = getWebDiagramBabylonJsBridgeUtilFunctions().validateActionBlendDurationWithPreviousActionStartTime(blendDuration, previousAction.startTime, startTime);
+                                    const blendActionStartTime = getWebDiagramBabylonJsBridgeUtilFunctions().calculateBlendActionStartTime(startTime, blendDuration);
+                                    
+                                    (() => {
+                                        const actionStartTime = eachAction.startTime;
+                                        
+                                        blendDuration = getWebDiagramBabylonJsBridgeUtilFunctions().validateActionBlendDurationWithActionStartTime(blendActionStartTime, blendDuration, actionStartTime);
+                                    })();
+
+                                    const blendAction = {
+                                        id: `${previousAction.id} -> ${eachAction.id}`,
+
+                                        startTime: blendActionStartTime,
+                                        duration: blendDuration,                                        
+
+                                        startRatio: 0,
+                                        endRatio: 1,                                        
+                                        
+                                        isBlendAction: true,
+                                        
+                                        previousAction: previousAction,
+                                        currentAction: eachAction
+                                    };
+                                    
+                                    allBlendActions.add(blendAction);
+                                    
+                                    
+                                    previousAction.endBlendAction = blendAction;
+                                    
+                                    blendAction.nextActionForBlend = eachAction;
+                                    
+                                    
+                                    
+                                    let previousActionStartTime = previousAction.startTime;
+                                    let previousActionSpeed = previousAction.speed;
+                                    
+                                    const actionSpeed = eachAction.speed;
+                                    
+                                    loadActionsPromises.push(new Promise((resolve, reject) => {
+                                        let previousActionObject = this.getActionObject(previousAction.id);
+                                        const actionObject = this.getActionObject(eachAction.id);
+                                        
+                                        if (previousActionObject == null ||
+                                            actionObject == null) {
+                                        
+                                            resolve();
+                                            
+                                            return;
+                                        }
+                                        
+
+                                        
+                                        
+                                        if (blendActionStartTime < previousActionStartTime) {
+                                            var previousActionRepeatForAction = previousAction.repeatForAction;
+                                            
+                                            if (previousActionRepeatForAction != null) {
+                                                previousActionObject = this.getActionObject(previousActionRepeatForAction.id);
+                                                previousActionStartTime = previousActionRepeatForAction.startTime;
+                                            }
+                                        }
+                                        
+                                        
+                                        const blendEasing = eachAction.blendEasing;
+
+                                        this.loadBlendAction(elementCharacter3dController, previousActionObject, actionObject, blendActionStartTime, blendDuration, blendEasing, previousActionStartTime, previousActionSpeed, actionSpeed).then((blendActionObject) => {
+                                            this.actionLoaded(blendAction.id, blendActionObject);
+                                            this.addBlendActionId(blendAction.id);
+
+                                            resolve();
+                                        }).catch((errorMessage) => {
+                                            reject(errorMessage);
+                                        });
+                                    }));
+                                }
+                            }
+                            
+                            previousAction = eachAction;
+                        });
+                        
+                        return Promise.all(loadActionsPromises);
+                    }).then(() => {
+                        this.normalizedActions = allBlendActions.concat(this.normalizedActions);
+                        
+                        resolve();
+                    }).catch((errorMessage) => {
+                        reject(errorMessage);
+                    });
+                });
+            }
+            
+            addDelayedCallToTimeline(funct, position) {
+                const delayTime = 0;
+                
+                const delayedCall = gsap.delayedCall(delayTime, funct);
+                
+                this.addDelayedCall(delayedCall);
+
+                this.timelineAddTween(delayedCall, position);
+                
+                return delayedCall;
+            }
+            
+            
+            clearTimeline() {
+                this.timeline.clear();
+                this.killAllDelayedCalls();
+
+                if (this.moveCharacterByActionsTweens != null) {
+                    this.destroyMoveCharacterByActionsTweens();
+                }
+            }
+            
+            killTimeline() {
+                this.timeline.kill();
+            }
+            
+            
+            delayedCalls = (() => {
+                let array = [
+                ];
+                
+                return {
+                    add: (eachDelayedCall) => {
+                        array.push(eachDelayedCall);
+                    },
+                    
+                    killAll: () => {
+                        if (array.length > 0) {
+                            array.forEach((eachDelayedCall) => {
+                                eachDelayedCall.kill();
+                            });
+                            
+                            array = [
+                            ];
+                        }
+                    }
+                };
+            })();
+            
+            
+            
+            addDelayedCall(eachDelayedCall) {
+                this.delayedCalls.add(eachDelayedCall);
+            }
+            
+            killAllDelayedCalls() {
+                this.delayedCalls.killAll();
+            }
+            
+            
+            buildTimelineForActions() {
+                return new Promise((resolve, reject) => {
+                    this.clearTimeline();
+                    
+                    const handleNormalizedActions = () => {
+                        return new Promise((resolve, reject) => {
+                            const localNormalizedActions = this.normalizedActions;
+                            
+                            const normalizedActionCount = localNormalizedActions.length;
+                            let nextNormalizedActionIndex = 0;
+
+                            const performHandleNextNormalizedActionIndex = () => {
+                                return new Promise((resolve, reject) => {
+                                    const eachAction = localNormalizedActions[nextNormalizedActionIndex];
+
+                                    const startTime = eachAction.startTime;
+                                    
+                                    const duration = (() => {
+                                        if (isSingleFrameForAction(eachAction)) {
+                                            const repeatDuration = eachAction.repeatDuration;
+                                            
+                                            if (repeatDuration != null &&
+                                                repeatDuration > 0) {
+
+                                                return repeatDuration;
+                                            }
+                                        }
+                                        
+                                        
+                                        return getActionActualDuration(eachAction);
+                                    })();
+                                    
+                                    
+                                    this.timelineTo({
+                                        progress: 0
+                                    }, {
+                                        progress: 1,
+                                        duration: duration
+                                    }, startTime);
+
+                                    this.addDelayedCallToTimeline(() => {
+                                        if (this.isPlaying()) {
+                                            this.seekWithoutSeekTimeline(startTime, eachAction).then(() => {
+                                                // Done.
+                                            }).catch((errorMessage) => {
+                                                console.error(errorMessage);
+                                            });
+                                        }
+                                    }, startTime);
+
+                                    this.addDelayedCallToTimeline(() => {
+                                        if (this.isPlaying()) {
+                                            this.seekWithoutSeekTimeline(startTime + duration, eachAction).then(() => {
+                                                if (eachAction.pauseWhenEnd) {
+                                                    const actionId = eachAction.id;
+                                                    const actionObject = this.getActionObject(actionId);
+
+                                                    if (actionObject != null) {
+                                                        actionObject.pause().then(() => {
+                                                            // Done.
+                                                        }).catch((errorMessage) => {
+                                                            console.error(errorMessage);
+                                                        });
+                                                    }
+                                                }
+                                            }).catch((errorMessage) => {
+                                                console.error(errorMessage);
+                                            });
+                                        }
+                                    }, startTime + duration);
+
+                                    resolve();
+                                });
+                            };
+
+                            const handleNextNormalizedActionIndex = () => {
+                                if (nextNormalizedActionIndex < normalizedActionCount) {
+                                    performHandleNextNormalizedActionIndex().then(() => {
+                                        nextNormalizedActionIndex++;
+
+                                        handleNextNormalizedActionIndex();
+                                    }).catch((errorMessage) => {
+                                        reject(errorMessage);
+                                    });
+                                } else {
+                                    resolve();
+                                }
+                            };
+
+                            handleNextNormalizedActionIndex();
+                        });
+                    };
+                    
+                    const handleActions = () => {
+                        return new Promise((resolve, reject) => {
+                            if (this.actions == null) {
+                                reject();
+                                
+                                return;
+                            }
+                            
+                            
+                            
+                            
+                            const allPromises = [
+                            ];
+                            
+                            const localTimeline = this.timeline;
+
+                            // Assume order is not a problem, so don't need to perform sequentially.
+                            this.iterateActions((eachAction) => {
+                                const actionId = eachAction.id;
+                                const actionObject = this.getActionObject(actionId);
+
+                                if (actionObject != null) {
+                                    allPromises.push(actionObject.buildTimeline(localTimeline));
+                                }
+                            });
+
+                            Promise.all(allPromises).then(() => {
+                                resolve();
+                            }).catch((errorMessage) => {
+                                reject(errorMessage);
+                            });
+                        });
+                    };
+                    
+                    handleNormalizedActions().then(() => {
+                        return handleActions();                        
+                    }).then(() => {
+                        resolve();
+                    }).catch((errorMessage) => {
+                        reject(errorMessage);
+                    });
+                });
+            }
+            
+            getPropertyFromAnimationsJsonObject(propertyName) {
+                const animationsJsonObject = this.getAnimationsJsonObject();
+
+                return animationsJsonObject[propertyName];
+            }
+            
+            getActionsPropertyValue() {
+                return this.getPropertyFromAnimationsJsonObject('actions');
+            }
+            
+            getInitialImage() {
+                const character3dLoadingUrl = this.getCharacterLoadingUrl();
+                
+                if (character3dLoadingUrl != null) {
+                    return character3dLoadingUrl;
+                }
+                
+                return this.getPropertyFromAnimationsJsonObject('initialImage');
+            }
+
+            getCharacterLoadingUrl() {
+                return CHARACTER_3D_LOADING_URL;
+            }
+
+            
+            getCharacterFamilyName() {
+                return this.getPropertyFromAnimationsJsonObject('characterFamilyName');
+            }
+
+            getCharacterAssetId() {
+                return this.getPropertyFromAnimationsJsonObject('characterAssetId');
+            }
+            
+            getTexture() {
+                return this.getPropertyFromAnimationsJsonObject('texture');
+            }
+            
+            getFlipH() {
+                return this.getPropertyFromAnimationsJsonObject('flipH');
+            }
+
+            getFlipV() {
+                return this.getPropertyFromAnimationsJsonObject('flipV');
+            }
+            
+            hasWaitForCharacterLoadedQueue() {
+                return this.waitForCharacterLoadedQueue != null;
+            }
+            
+            fireWaitForCharacterLoadedQueueEndLoadCharacter() {
+                this.waitForCharacterLoadedQueue.endLoadCharacter();
+            }
+
+            loadFromAnimationsJsonObject() {
+                const animationsJsonObject = this.getAnimationsJsonObject();
+
+                const localGetPropertyFromAnimationsJsonObject = (propertyName) => {
+                    return animationsJsonObject[propertyName];
+                };
+
+                const characterAssetId = localGetPropertyFromAnimationsJsonObject('characterAssetId');
+                const characterFamilyName = localGetPropertyFromAnimationsJsonObject('characterFamilyName');
+                const flipH = localGetPropertyFromAnimationsJsonObject('flipH');
+                const flipV = localGetPropertyFromAnimationsJsonObject('flipV');
+                
+                const texture = localGetPropertyFromAnimationsJsonObject('texture');
+                
+                this.actions = localGetPropertyFromAnimationsJsonObject('actions');
+                this.postSetActionsAction();
+                
+
+
+                
+                let characterReclaimed = false;
+                
+
+                const workingWindow = getWorkingWindow();
+                const localCharacter3dController = workingWindow.character3dController;
+                
+                localCharacter3dController.fromElement(this).then((elementCharacter3dController) => {
+                    return elementCharacter3dController.loadCharacterWithDetails(characterAssetId, characterFamilyName, flipH, flipV, texture, this);
+                }).then((resultOfLoadCharacterWithDetails) => {
+                    this.character = resultOfLoadCharacterWithDetails['character'];
+                    const details = resultOfLoadCharacterWithDetails['details'];
+                    
+                    characterReclaimed = details['reclaimed'];
+                    
+                    if (characterReclaimed) {
+                        // Avoid show preview and show real shape quickly causing flickers.
+                        this.hidePreview();
+                    }
+                    
+                    if (this.hasWaitForCharacterLoadedQueue()) {
+                        this.fireWaitForCharacterLoadedQueueEndLoadCharacter();
+                        delete this.waitForCharacterLoadedQueue;                        
+                    }
+                    
+                    return this.characterLoaded();
+                }).then(() => {
+                    return this.loadAllBlendActions();
+                }).then(() => {
+                    return this.buildTimelineForActions();
+                }).then(() => {
+                    if (this.character == null) {
+                        return;
+                    }
+                    
+                    
+                    if (characterReclaimed) {
+                        this.character.fireReloadForReclaimed();
+                    }
+                    
+                    
+                    return this.seek(0);
+                }).then(() => {                    
+                    this.hidePreview();
+                    
+                    this.setVisibleAsPromise(true).then(() => {
+                        this.synchronizeCharacterBounds();
+
+                        const localApi = this.createApi();
+
+                        this.api = localApi;
+                        this.setCharacterApi(localApi);
+
+
+                        this.fireApiReady();
+                    }).catch((errorMessage) => {
+                        console.error(errorMessage);
+                    });
+                }).catch((errorMessage) => {
+                    console.error(errorMessage);
+                });
+            }
+        };
+
+
+
+        window.customElements.define('character-3d', Character3D);
+    }
+})();
