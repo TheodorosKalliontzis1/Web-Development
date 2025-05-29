@@ -91,6 +91,79 @@ router.post('/add', (req, res) => {
     res.status(500).send('Σφάλμα προσθήκης');
   }
 });
+router.get('/:courseId', (req, res) => {
+  const courseId = req.params.courseId;
+
+  // Φόρτωσε το μάθημα
+  const course = db.prepare(`
+    SELECT c.*, s.semester AS semester_number, sch.name AS school_name
+    FROM courses c
+    JOIN semesters s ON c.semester_id = s.id
+    JOIN schools sch ON c.school_id = sch.id
+    WHERE c.id = ?
+  `).get(courseId);
+
+  if (!course) {
+    return res.status(404).send('Το μάθημα δεν βρέθηκε');
+  }
+
+  const user = req.session.user;
+  let canViewDetails = false;
+  let isProfessor = false;
+  let teachesThisCourse = false;
+
+  if (user) {
+    if (user.role === 'admin') {
+      canViewDetails = true;
+    } else {
+      const userSchool = db.prepare(`SELECT school_id FROM usersBelongsToSchool WHERE user_id = ?`).get(user.id);
+
+      if (userSchool && userSchool.school_id === course.school_id) {
+        canViewDetails = true;
+      }
+
+      if (user.role === 'professor') {
+        isProfessor = true;
+
+        const teaching = db.prepare(`
+          SELECT 1 FROM professorTeachesCourse
+          WHERE user_id = ? AND course_id = ?
+        `).get(user.id, courseId);
+
+        teachesThisCourse = !!teaching;
+      }
+    }
+  }
+
+  if (!canViewDetails) {
+    return res.status(403).send('Δεν έχετε δικαίωμα να δείτε αυτό το μάθημα.');
+  }
+
+  // Φόρτωσε τις ανακοινώσεις μαζί με το όνομα καθηγητή (username + surname)
+  const announcements = db.prepare(`
+    SELECT a.*, u.username || ' ' || u.surname AS professor_name
+    FROM announcements a
+    JOIN users u ON a.user_id = u.id
+    WHERE a.course_id = ?
+    ORDER BY a.created_at DESC
+  `).all(courseId);
+
+  // Φόρτωσε τους πόρους (αν έχεις)
+  const resources = db.prepare(`
+    SELECT * FROM resources WHERE course_id = ?
+  `).all(courseId);
+
+  res.render('course_details', {
+    course,
+    announcements,
+    resources,
+    user,
+    isAdmin: user?.role === 'admin',
+    isProfessor,
+    teachesThisCourse
+  });
+  //res.redirect(`/courses_details/${courseId}`);
+});
 
 
 
